@@ -97,13 +97,18 @@
         group: ansible
         mode: '0755'
 
+    - name: Check if database file exists
+      stat:
+        path: "{{ deploy_path }}/data/reservoir_data.db"
+      register: db_file_stat
+
     - name: Fix database file permissions if it exists
       file:
         path: "{{ deploy_path }}/data/reservoir_data.db"
         owner: ansible
         group: ansible
         mode: '0664'
-      when: lookup('stat', deploy_path + '/data/reservoir_data.db').stat.exists
+      when: db_file_stat.stat.exists
 
     - name: Initialize database if needed
       command: "{{ deploy_path }}/venv/bin/python -c 'from database import init_db; init_db()'"
