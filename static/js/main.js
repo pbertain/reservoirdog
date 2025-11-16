@@ -731,10 +731,7 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
         return;
     }
     
-    // Use labels from the dataset with more points, or combine them
-    const labels = berData.labels.length >= oroData.labels.length ? berData.labels : oroData.labels;
-    
-    // Calculate dynamic Y-axis range based on all values
+    // Calculate dynamic Y-axis range based on all values (will be recalculated after timestamp alignment)
     const allValues = [...berData.values, ...oroData.values];
     const minValue = Math.min(...allValues);
     const maxValue = Math.max(...allValues);
