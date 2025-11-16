@@ -466,6 +466,24 @@ function setupChartModals() {
                         return;
                     }
                     
+                    // Calculate dynamic Y-axis range for modal
+                    const modalValues = modalChartData.map(d => typeof d === 'object' ? d.y : d);
+                    const modalMinValue = Math.min(...modalValues);
+                    const modalMaxValue = Math.max(...modalValues);
+                    const modalRange = modalMaxValue - modalMinValue;
+                    const modalPadding = modalRange * 0.1;
+                    
+                    let modalYMin, modalYMax, modalStepSize;
+                    if (chartType === 'storage') {
+                        modalYMin = Math.max(0, Math.floor((modalMinValue - modalPadding) / 100000) * 100000);
+                        modalYMax = Math.ceil((modalMaxValue + modalPadding) / 100000) * 100000;
+                        modalStepSize = Math.max(200000, Math.ceil((modalYMax - modalYMin) / 5 / 200000) * 200000);
+                    } else {
+                        modalYMin = Math.max(0, Math.floor((modalMinValue - modalPadding) / 50) * 50);
+                        modalYMax = Math.ceil((modalMaxValue + modalPadding) / 50) * 50;
+                        modalStepSize = Math.max(50, Math.ceil((modalYMax - modalYMin) / 5 / 50) * 50);
+                    }
+                    
                     const chartLabel = chartType === 'storage' ? 'Storage (acre-feet)' : 'Elevation (feet)';
                     const borderColor = chartType === 'storage' ? '#4A90E2' : '#5FB3B3';
                     const bgColor = chartType === 'storage' ? 'rgba(74, 144, 226, 0.1)' : 'rgba(95, 179, 179, 0.1)';
