@@ -334,14 +334,11 @@ function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
                             const dataPoint = chartData[dataIndex];
                             if (dataPoint && typeof dataPoint === 'object' && dataPoint.x) {
                                 const date = new Date(dataPoint.x);
-                                return date.toLocaleString('en-US', { 
-                                    weekday: 'short',
-                                    month: 'short', 
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                });
+                                const month = date.toLocaleString('en-US', { month: 'short' });
+                                const day = date.getDate();
+                                const hours = String(date.getHours()).padStart(2, '0');
+                                const minutes = String(date.getMinutes()).padStart(2, '0');
+                                return `${month} ${day} ${hours}h${minutes}`;
                             }
                             return context[0].label || '';
                         }
@@ -547,24 +544,21 @@ function setupChartModals() {
                                     padding: 10,
                                     titleFont: { size: 12 },
                                     bodyFont: { size: 11 },
-                                    callbacks: {
-                                        title: function(context) {
-                                            const dataIndex = context[0].dataIndex;
-                                            const dataPoint = modalChartData[dataIndex];
-                                            if (dataPoint && typeof dataPoint === 'object' && dataPoint.x) {
-                                                const date = new Date(dataPoint.x);
-                                                return date.toLocaleString('en-US', { 
-                                                    weekday: 'short',
-                                                    month: 'short', 
-                                                    day: 'numeric',
-                                                    year: 'numeric',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                });
-                                            }
-                                            return context[0].label || '';
-                                        }
-                                    }
+                        callbacks: {
+                            title: function(context) {
+                                const dataIndex = context[0].dataIndex;
+                                const dataPoint = modalChartData[dataIndex];
+                                if (dataPoint && typeof dataPoint === 'object' && dataPoint.x) {
+                                    const date = new Date(dataPoint.x);
+                                    const month = date.toLocaleString('en-US', { month: 'short' });
+                                    const day = date.getDate();
+                                    const hours = String(date.getHours()).padStart(2, '0');
+                                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                                    return `${month} ${day} ${hours}h${minutes}`;
+                                }
+                                return context[0].label || '';
+                            }
+                        }
                                 }
                             },
                             scales: {
@@ -818,14 +812,11 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                                 const dataPoint = berAligned[dataIndex] || oroAligned[dataIndex];
                                 if (dataPoint && typeof dataPoint === 'object' && dataPoint.x) {
                                     const date = new Date(dataPoint.x);
-                                    return date.toLocaleString('en-US', { 
-                                        weekday: 'short',
-                                        month: 'short', 
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    });
+                                    const month = date.toLocaleString('en-US', { month: 'short' });
+                                    const day = date.getDate();
+                                    const hours = String(date.getHours()).padStart(2, '0');
+                                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                                    return `${month} ${day} ${hours}h${minutes}`;
                                 }
                                 return context[0].label || '';
                             }
