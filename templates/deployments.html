@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployments - Reservoir Dog</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <style>
+        .deployments-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .deployment-section {
+            margin-bottom: 3rem;
+        }
+        .deployment-section h2 {
+            color: var(--water-blue-dark);
+            border-bottom: 2px solid var(--water-blue);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .deployment-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+        .deployment-table th {
+            background: var(--water-blue);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+        .deployment-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .deployment-table tr:hover {
+            background: var(--background-light);
+        }
+        .deployment-table tr:last-child td {
+            border-bottom: none;
+        }
+        .env-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .env-badge.dev {
+            background: #FFA500;
+            color: white;
+        }
+        .env-badge.prod {
+            background: #28A745;
+            color: white;
+        }
+        .commit-sha {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .commit-message {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .no-deployments {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        .header-link {
+            color: white;
+            text-decoration: none;
+            margin-left: 2rem;
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        .header-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <img src="{{ url_for('serve_image', filename='rdog-logo.gif') }}" alt="Reservoir Dog Logo" class="logo">
+            <div class="header-text">
+                <h1>Reservoir Dog</h1>
+                <p class="subtitle">Deployment History</p>
+            </div>
+            <div style="margin-left: auto;">
+                <a href="{{ url_for('index') }}" class="header-link">← Dashboard</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="deployments-container">
+        <div class="deployment-section">
+            <h2>Production Deployments</h2>
+            {% if prod_deployments %}
+            <table class="deployment-table">
+                <thead>
+                    <tr>
+                        <th>Deployed At</th>
+                        <th>Environment</th>
+                        <th>Branch</th>
+                        <th>Commit</th>
+                        <th>Message</th>
+                        <th>Deployed By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for deployment in prod_deployments %}
+                    <tr>
+                        <td>{{ deployment.deployed_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+                        <td><span class="env-badge prod">{{ deployment.environment }}</span></td>
+                        <td>{{ deployment.branch or 'N/A' }}</td>
+                        <td><span class="commit-sha">{{ deployment.commit_sha[:7] }}</span></td>
+                        <td class="commit-message" title="{{ deployment.commit_message }}">{{ deployment.commit_message or 'N/A' }}</td>
+                        <td>{{ deployment.deployed_by or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-deployments">No production deployments recorded yet.</div>
+            {% endif %}
+        </div>
+
+        <div class="deployment-section">
+            <h2>Development Deployments</h2>
+            {% if dev_deployments %}
+            <table class="deployment-table">
+                <thead>
+                    <tr>
+                        <th>Deployed At</th>
+                        <th>Environment</th>
+                        <th>Branch</th>
+                        <th>Commit</th>
+                        <th>Message</th>
+                        <th>Deployed By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for deployment in dev_deployments %}
+                    <tr>
+                        <td>{{ deployment.deployed_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+                        <td><span class="env-badge dev">{{ deployment.environment }}</span></td>
+                        <td>{{ deployment.branch or 'N/A' }}</td>
+                        <td><span class="commit-sha">{{ deployment.commit_sha[:7] }}</span></td>
+                        <td class="commit-message" title="{{ deployment.commit_message }}">{{ deployment.commit_message or 'N/A' }}</td>
+                        <td>{{ deployment.deployed_by or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-deployments">No development deployments recorded yet.</div>
+            {% endif %}
+        </div>
+
+        <div style="margin-top: 3rem; padding: 1rem; background: var(--background-light); border-radius: 8px;">
+            <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                <strong>Current Environment:</strong> <span class="env-badge {{ environment }}">{{ environment }}</span>
+            </p>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>Reservoir Dog - Deployment Tracking</p>
+    </footer>
+</body>
+</html>
+

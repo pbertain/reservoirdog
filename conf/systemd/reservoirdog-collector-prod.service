@@ -1,0 +1,19 @@
+[Unit]
+Description=Reservoir Dog Data Collector - Production
+After=network.target
+
+[Service]
+Type=simple
+User=ansible
+Group=ansible
+WorkingDirectory=/opt/prod/reservoirdog
+Environment="ENVIRONMENT=prod"
+ExecStart=/opt/prod/reservoirdog/venv/bin/python scheduler.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

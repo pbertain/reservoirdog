@@ -1,0 +1,59 @@
+---
+# Ansible playbook to deploy NGINX configuration for Reservoir Dog - Dev Environment
+# Usage: ansible-playbook -i inventory deploy-nginx-dev.yml
+
+- name: Deploy NGINX configuration for Reservoir Dog - Dev
+  hosts: dev
+  become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    environment: dev
+    nginx_config_dir: "{{ playbook_dir }}/../conf/nginx-dev"
+    nginx_sites_available: "/etc/nginx/sites-available"
+    nginx_sites_enabled: "/etc/nginx/sites-enabled"
+
+  tasks:
+    - name: Ensure NGINX sites directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ nginx_sites_available }}"
+        - "{{ nginx_sites_enabled }}"
+
+    - name: Copy sites-available configuration file
+      copy:
+        src: "{{ nginx_config_dir }}/sites-available/45-reservoirdog-dev-nginx.conf"
+        dest: "{{ nginx_sites_available }}/45-reservoirdog-dev-nginx.conf"
+        mode: '0644'
+        backup: yes
+
+    - name: Remove old symlink if exists
+      file:
+        path: "{{ nginx_sites_enabled }}/45-reservoirdog-dev-nginx.conf"
+        state: absent
+
+    - name: Create symlink in sites-enabled
+      file:
+        src: "{{ nginx_sites_available }}/45-reservoirdog-dev-nginx.conf"
+        dest: "{{ nginx_sites_enabled }}/45-reservoirdog-dev-nginx.conf"
+        state: link
+
+    - name: Test NGINX configuration
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      failed_when: nginx_test.rc != 0
+
+    - name: Restart NGINX
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+      when: nginx_test.rc == 0
+
+    - name: Display deployment status
+      debug:
+        msg: "NGINX configuration deployed successfully to dev environment (host78.nird.club)"
+

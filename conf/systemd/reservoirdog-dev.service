@@ -1,0 +1,20 @@
+[Unit]
+Description=Reservoir Dog - Development Environment
+After=network.target
+
+[Service]
+Type=simple
+User=ansible
+Group=ansible
+WorkingDirectory=/opt/dev/reservoirdog
+Environment="ENVIRONMENT=dev"
+Environment="FLASK_PORT=45081"
+ExecStart=/opt/dev/reservoirdog/venv/bin/python app.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

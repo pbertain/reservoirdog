@@ -1,0 +1,26 @@
+# Update the Airpuff /usr/local/bin code
+#*/15 * * * * root GIT_DIR=/var/airpuff/code/airpuff/.git GIT_WORK_TREE=/var/airpuff/code/airpuff /bin/git pull
+#*/15 * * * * root GIT_DIR=/var/airpuff/web/airpuff-web/.git GIT_WORK_TREE=/var/airpuff/web/airpuff-web /bin/git pull
+
+# Python version
+#*/15 * * * * root /airpuff/pypuff-run.sh "Work Commute" ber,oro
+
+# Create the classic page
+#*/15 * * * * root /var/bertain-cdn/reservoirdog/bin/rdog-classic.sh "Davis Area" "BER ORO"
+
+# Store the data
+*/15 * * * * root /var/bertain-cdn/reservoirdog/bin/rdog-rrd.sh "BER ORO"
+
+# Make the charts
+*/15 * * * * root /var/bertain-cdn/reservoirdog/bin/rdog-rrd-graph.sh "BER ORO"
+
+# Make the web pages
+*/15 * * * * root /var/bertain-cdn/reservoirdog/bin/rdog-rrd-web-create.sh "BER ORO"
+
+# Fix the links
+*/15 * * * * root /var/bertain-cdn/reservoirdog/bin/rdog-rrd-web-create-img-link.sh "BER ORO"
+
+# Cleanup
+1,16,31,46 * * * * root /usr/local/bin/airpuff/airpuff-rrd-web-create-cleanup.sh
+#7,12,17,22,27,32,37,42,47,52,57 * * * * root /usr/local/bin/airpuff/airpuff-rrd-web-create-img-link-cleanup.sh
+

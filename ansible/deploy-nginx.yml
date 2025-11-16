@@ -1,0 +1,73 @@
+---
+# Ansible playbook to deploy NGINX configurations for Reservoir Dog
+# Usage: ansible-playbook -i inventory deploy-nginx.yml
+
+- name: Deploy NGINX configurations for Reservoir Dog
+  hosts: all
+  become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  
+  tasks:
+    - name: Determine environment based on hostname
+      set_fact:
+        environment: "{{ 'dev' if 'host78' in inventory_hostname else 'prod' }}"
+      when: environment is not defined
+
+    - name: Set NGINX config paths based on environment
+      set_fact:
+        nginx_config_dir: "{{ playbook_dir }}/../conf/nginx-{{ environment }}"
+        nginx_sites_available: "/etc/nginx/sites-available"
+        nginx_sites_enabled: "/etc/nginx/sites-enabled"
+
+    - name: Ensure NGINX sites directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ nginx_sites_available }}"
+        - "{{ nginx_sites_enabled }}"
+
+    - name: Copy sites-available configuration files
+      copy:
+        src: "{{ nginx_config_dir }}/sites-available/{{ item }}"
+        dest: "{{ nginx_sites_available }}/{{ item }}"
+        mode: '0644'
+        backup: yes
+      loop: "{{ lookup('fileglob', nginx_config_dir + '/sites-available/*.conf') | map('basename') | list }}"
+      when: lookup('fileglob', nginx_config_dir + '/sites-available/*.conf') | length > 0
+      register: nginx_configs_copied
+
+    - name: Remove old symlinks in sites-enabled
+      file:
+        path: "{{ nginx_sites_enabled }}/{{ item }}"
+        state: absent
+      loop: "{{ lookup('fileglob', nginx_sites_enabled + '/45-reservoirdog-*.conf') | map('basename') | list }}"
+      when: lookup('fileglob', nginx_sites_enabled + '/45-reservoirdog-*.conf') | length > 0
+
+    - name: Create symlinks in sites-enabled
+      file:
+        src: "{{ nginx_sites_available }}/{{ item }}"
+        dest: "{{ nginx_sites_enabled }}/{{ item }}"
+        state: link
+      loop: "{{ nginx_configs_copied.results | selectattr('changed', 'equalto', true) | map(attribute='item') | list + nginx_configs_copied.results | selectattr('changed', 'equalto', false) | map(attribute='item') | list }}"
+      when: nginx_configs_copied is defined and nginx_configs_copied.results is defined
+
+    - name: Test NGINX configuration
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      failed_when: nginx_test.rc != 0
+
+    - name: Restart NGINX
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+      when: nginx_test.rc == 0
+
+    - name: Display deployment status
+      debug:
+        msg: "NGINX configuration deployed successfully for {{ environment }} environment"
+

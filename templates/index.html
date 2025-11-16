@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservoir Dog - California Reservoir Levels</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <img src="{{ url_for('serve_image', filename='rdog-logo.gif') }}" alt="Reservoir Dog Logo" class="logo">
+            <div class="header-text">
+                <h1>Reservoir Dog</h1>
+                <p class="subtitle">California Reservoir Levels</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="reservoir-grid">
+            {% for code, info in reservoirs.items() %}
+            <div class="reservoir-card" data-reservoir="{{ code }}">
+                <div class="card-header">
+                    <h2>{{ info.name }}</h2>
+                    <p class="dam-name">{{ info.dam_name }}</p>
+                </div>
+                
+                <div class="card-stats" id="stats-{{ code }}">
+                    <div class="stat-item">
+                        <span class="stat-label">Current Storage</span>
+                        <span class="stat-value" id="storage-{{ code }}">--</span>
+                        <span class="stat-unit">acre-feet</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Elevation</span>
+                        <span class="stat-value" id="elevation-{{ code }}">--</span>
+                        <span class="stat-unit">feet</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Last Updated</span>
+                        <span class="stat-value" id="timestamp-{{ code }}">--</span>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Storage Over Time</h3>
+                    <!-- Grafana panel will be embedded here -->
+                    <div class="grafana-panel" id="grafana-storage-{{ code }}" data-panel-id="storage-{{ code }}"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Elevation Over Time</h3>
+                    <div class="grafana-panel" id="grafana-elevation-{{ code }}" data-panel-id="elevation-{{ code }}"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>Data sourced from California Data Exchange Center (CDEC) and US Bureau of Reclamation</p>
+        <p class="footer-note">Note: Lake Berryessa data before 1997 is sporadic</p>
+        <p style="margin-top: 1rem;"><a href="{{ url_for('deployments') }}" style="color: white; text-decoration: underline;">View Deployment History</a></p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
+
