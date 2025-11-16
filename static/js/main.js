@@ -772,7 +772,7 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
     });
     
     // Rebuild labels and aligned data based on sorted timestamps
-    const alignedLabels = [];
+    const labels = [];
     const berAligned = [];
     const oroAligned = [];
     let lastDay = -1;
@@ -800,7 +800,7 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
             label = formatDateLabel(date, days, idx, sortedTimestamps.length);
         }
         
-        alignedLabels.push(label);
+        labels.push(label);
         
         // Get values for this timestamp, or null if not available
         const berValue = berMap.get(ts);
@@ -810,8 +810,23 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
         oroAligned.push(oroValue !== undefined ? { x: ts, y: oroValue } : null);
     });
     
-    // Use aligned labels
-    const labels = alignedLabels;
+    // Calculate dynamic Y-axis range based on all values
+    const allValues = [...berData.values, ...oroData.values];
+    const minValue = Math.min(...allValues);
+    const maxValue = Math.max(...allValues);
+    const range = maxValue - minValue;
+    const padding = range * 0.1;
+    
+    let yMin, yMax, stepSize;
+    if (metric === 'storage') {
+        yMin = Math.max(0, Math.floor((minValue - padding) / 100000) * 100000);
+        yMax = Math.ceil((maxValue + padding) / 100000) * 100000;
+        stepSize = Math.max(200000, Math.ceil((yMax - yMin) / 5 / 200000) * 200000);
+    } else {
+        yMin = Math.max(0, Math.floor((minValue - padding) / 50) * 50);
+        yMax = Math.ceil((maxValue + padding) / 50) * 50;
+        stepSize = Math.max(50, Math.ceil((yMax - yMin) / 5 / 50) * 50);
+    }
     
     try {
         new Chart(canvas, {
