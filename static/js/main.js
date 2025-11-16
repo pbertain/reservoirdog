@@ -799,13 +799,17 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
         
         labels.push(label);
         
-        // Get values for this timestamp, or null if not available
+        // Get values for this timestamp, or NaN if not available
         const berValue = berMap.get(ts);
         const oroValue = oroMap.get(ts);
         
-        berAligned.push(berValue !== undefined ? { x: ts, y: berValue } : null);
-        oroAligned.push(oroValue !== undefined ? { x: ts, y: oroValue } : null);
+        // Use NaN for missing values - Chart.js handles NaN better than null/undefined
+        berAligned.push(berValue !== undefined ? { x: ts, y: berValue } : NaN);
+        oroAligned.push(oroValue !== undefined ? { x: ts, y: oroValue } : NaN);
     });
+    
+    // Store sortedTimestamps in closure for tooltip access
+    const sortedTimestampsForTooltip = sortedTimestamps;
     
     try {
         new Chart(canvas, {
@@ -822,7 +826,8 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                         fill: false,
                         tension: 0.4,
                         pointRadius: 0,
-                        pointHoverRadius: 4
+                        pointHoverRadius: 4,
+                        spanGaps: true
                     },
                     {
                         label: 'Lake Oroville',
@@ -833,7 +838,8 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                         fill: false,
                         tension: 0.4,
                         pointRadius: 0,
-                        pointHoverRadius: 4
+                        pointHoverRadius: 4,
+                        spanGaps: true
                     }
                 ]
             },
@@ -859,10 +865,11 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                         bodyFont: { size: 11 },
                         callbacks: {
                             title: function(context) {
+                                // Get timestamp from the sorted timestamps array using dataIndex
                                 const dataIndex = context[0].dataIndex;
-                                const dataPoint = berAligned[dataIndex] || oroAligned[dataIndex];
-                                if (dataPoint && typeof dataPoint === 'object' && dataPoint.x) {
-                                    const date = new Date(dataPoint.x);
+                                if (dataIndex >= 0 && dataIndex < sortedTimestampsForTooltip.length) {
+                                    const ts = sortedTimestampsForTooltip[dataIndex];
+                                    const date = new Date(ts);
                                     const month = date.toLocaleString('en-US', { month: 'short' });
                                     const day = date.getDate();
                                     const hours = String(date.getHours()).padStart(2, '0');
