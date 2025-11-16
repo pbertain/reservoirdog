@@ -123,19 +123,44 @@ function showChartPlaceholder(reservoirCode, metric) {
 }
 
 // Format date label based on time range
-function formatDateLabel(date, days) {
-    if (days <= 7) {
-        // For 1 week: Show day of week, align to midnight
+function formatDateLabel(date, days, index = null, totalPoints = null) {
+    if (days <= 1) {
+        // For 1 day: Show time every 2 hours (00:00, 02:00, 04:00, etc.)
+        const hours = date.getHours();
+        if (hours % 2 === 0) {
+            return String(hours).padStart(2, '0') + ':00';
+        }
+        return '';
+    } else if (days <= 7) {
+        // For 1 week: Show day of week at midnight, or first/last point
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const hours = date.getHours();
-        // Only show label at midnight (00:00) or if it's the first/last point
-        if (hours === 0) {
-            return dayNames[date.getDay()];
+        const isFirst = index === 0;
+        const isLast = index !== null && totalPoints !== null && index === totalPoints - 1;
+        
+        if (hours === 0 || isFirst || isLast) {
+            const dayName = dayNames[date.getDay()];
+            // Add date for first occurrence of each day
+            if (hours === 0 || isFirst) {
+                return dayName;
+            }
+            return dayName;
         }
-        return ''; // Empty for non-midnight hours
+        return '';
+    } else if (days <= 30) {
+        // For 1 month: Show date every few days
+        const dayOfMonth = date.getDate();
+        if (dayOfMonth % 5 === 0 || dayOfMonth === 1) {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        return '';
     } else {
-        // For longer ranges: Show month/day
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        // For longer ranges: Show month/day less frequently
+        const dayOfMonth = date.getDate();
+        if (dayOfMonth === 1 || dayOfMonth === 15) {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        return '';
     }
 }
 
@@ -186,9 +211,13 @@ function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
                 console.warn(`Invalid date: ${d.timestamp}`);
                 continue;
             }
-            const dateLabel = formatDateLabel(date, days);
+            // Store full timestamp for tooltip
+            const dateLabel = formatDateLabel(date, days, chartData.length, dataPoints.length);
             chartLabels.push(dateLabel);
-            chartData.push(value);
+            chartData.push({
+                x: d.timestamp,
+                y: value
+            });
         } catch (e) {
             console.warn(`Failed to parse timestamp: ${d.timestamp}`, e);
             continue;
@@ -221,6 +250,26 @@ function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
         console.log(`Labels:`, chartLabels);
         console.log(`Data:`, chartData);
         
+        // Calculate dynamic Y-axis range based on data
+        const values = chartData.map(d => typeof d === 'object' ? d.y : d);
+        const minValue = Math.min(...values);
+        const maxValue = Math.max(...values);
+        const range = maxValue - minValue;
+        const padding = range * 0.1; // 10% padding
+        
+        let yMin, yMax, stepSize;
+        if (metric === 'storage') {
+            // Round to nearest 0.1M
+            yMin = Math.max(0, Math.floor((minValue - padding) / 100000) * 100000);
+            yMax = Math.ceil((maxValue + padding) / 100000) * 100000;
+            stepSize = Math.max(200000, Math.ceil((yMax - yMin) / 5 / 200000) * 200000); // Steps of 0.2M or larger
+        } else {
+            // Round to nearest 50 feet
+            yMin = Math.max(0, Math.floor((minValue - padding) / 50) * 50);
+            yMax = Math.ceil((maxValue + padding) / 50) * 50;
+            stepSize = Math.max(50, Math.ceil((yMax - yMin) / 5 / 50) * 50); // Steps of 50 feet or larger
+        }
+        
         new Chart(canvas, {
         type: 'line',
         data: {
@@ -250,7 +299,25 @@ function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
                     padding: 10,
                     titleFont: { size: 12 },
-                    bodyFont: { size: 11 }
+                    bodyFont: { size: 11 },
+                    callbacks: {
+                        title: function(context) {
+                            const dataIndex = context[0].dataIndex;
+                            const dataPoint = chartData[dataIndex];
+                            if (dataPoint && typeof dataPoint === 'object' && dataPoint.x) {
+                                const date = new Date(dataPoint.x);
+                                return date.toLocaleString('en-US', { 
+                                    weekday: 'short',
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                            }
+                            return context[0].label || '';
+                        }
+                    }
                 }
             },
             scales: {
@@ -272,17 +339,17 @@ function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
                 },
                 y: {
                     display: true,
-                    min: metric === 'storage' ? 1000000 : 400, // 1.0M acre-feet or 400 feet
-                    max: metric === 'storage' ? 2000000 : 1000, // 2.0M acre-feet or 1000 feet
+                    min: yMin,
+                    max: yMax,
                     grid: {
                         color: 'rgba(0, 0, 0, 0.05)'
                     },
                     ticks: {
                         font: { size: 10 },
-                        stepSize: metric === 'storage' ? 200000 : 100, // 0.2M steps or 100 feet
+                        stepSize: stepSize,
                         callback: function(value) {
                             if (metric === 'storage') {
-                                // Show: 1.0, 1.2, 1.4, 1.6, 1.8, 2.0
+                                // Show in millions with 1 decimal
                                 return (value / 1000000).toFixed(1);
                             } else {
                                 // Show elevation in feet
@@ -336,8 +403,8 @@ function setupChartModals() {
             modalBody.innerHTML = '<div class="grafana-panel"><canvas></canvas></div>';
             const modalCanvas = modalBody.querySelector('canvas');
             
-            // Fetch data for the chart
-            fetch(`${API_BASE}/reservoir/${reservoirCode}/data?days=90`)
+            // Fetch data for the modal chart - use 1 day for detailed view
+            fetch(`${API_BASE}/reservoir/${reservoirCode}/data?days=1`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -368,9 +435,14 @@ function setupChartModals() {
                         
                         try {
                             const date = new Date(d.timestamp);
-                            const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            // For 1 day view, show time every 2 hours
+                            const hours = date.getHours();
+                            const label = hours % 2 === 0 ? String(hours).padStart(2, '0') + ':00' : '';
                             modalChartLabels.push(label);
-                            modalChartData.push(value);
+                            modalChartData.push({
+                                x: d.timestamp,
+                                y: value
+                            });
                         } catch (e) {
                             console.warn(`Failed to parse timestamp: ${d.timestamp}`, e);
                             continue;
