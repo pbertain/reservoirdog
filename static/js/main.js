@@ -469,14 +469,19 @@ async function createChartJSCharts() {
 }
 
 // Wait for Chart.js to load
-function waitForChartJS(callback, maxAttempts = 100) {
+function waitForChartJS(callback, maxAttempts = 150) {
+    console.log(`waitForChartJS: attempt ${150 - maxAttempts + 1}/${150}, Chart defined: ${typeof Chart !== 'undefined'}`);
+    
     if (typeof Chart !== 'undefined') {
-        console.log('Chart.js loaded successfully');
+        console.log('Chart.js loaded successfully!');
         callback();
     } else if (maxAttempts > 0) {
         setTimeout(() => waitForChartJS(callback, maxAttempts - 1), 100);
     } else {
-        console.error('Chart.js failed to load after waiting. Check network tab for CDN issues.');
+        console.error('Chart.js failed to load after 15 seconds. Final check - Chart:', typeof Chart);
+        console.error('window.chartJsLoadSuccess:', window.chartJsLoadSuccess);
+        console.error('window.chartJsLoadFailed:', window.chartJsLoadFailed);
+        
         // Show error message in chart containers
         document.querySelectorAll('.grafana-panel-compact').forEach(panel => {
             if (!panel.querySelector('canvas') && !panel.textContent.includes('No data')) {

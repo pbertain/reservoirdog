@@ -10,14 +10,22 @@
             onerror="console.warn('Failed to load Chart.js from jsdelivr CDN, trying local...'); loadLocalChartJS();"
             onload="window.chartJsLoadSuccess = true;"></script>
     <script>
+        console.log('Chart.js loader script executing...');
+        console.log('Initial Chart check:', typeof Chart);
+        console.log('chartJsLoadSuccess:', window.chartJsLoadSuccess);
+        
         function loadLocalChartJS() {
+            console.log('loadLocalChartJS called, Chart defined:', typeof Chart);
             if (typeof Chart === 'undefined') {
                 console.log('Loading Chart.js from local static files...');
+                const localUrl = "{{ url_for('static', filename='js/lib/chart.umd.min.js') }}";
+                console.log('Local Chart.js URL:', localUrl);
                 const script = document.createElement('script');
-                script.src = "{{ url_for('static', filename='js/lib/chart.umd.min.js') }}";
+                script.src = localUrl;
                 script.onerror = function() {
-                    console.error('Failed to load Chart.js from local files as well');
+                    console.error('Failed to load Chart.js from local files. URL was:', localUrl);
                     // Try unpkg as last resort
+                    console.log('Trying unpkg as last resort...');
                     const unpkgScript = document.createElement('script');
                     unpkgScript.src = 'https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js';
                     unpkgScript.onload = function() {
@@ -35,10 +43,13 @@
                     window.chartJsLoadSuccess = true;
                 };
                 document.head.appendChild(script);
+            } else {
+                console.log('Chart already defined, skipping local load');
             }
         }
         // Fallback check after 1 second
         setTimeout(function() {
+            console.log('1 second timeout check - Chart:', typeof Chart, 'Success:', window.chartJsLoadSuccess);
             if (typeof Chart === 'undefined' && !window.chartJsLoadSuccess) {
                 loadLocalChartJS();
             }
