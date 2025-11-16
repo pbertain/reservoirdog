@@ -799,13 +799,23 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
         
         labels.push(label);
         
-        // Get values for this timestamp, or NaN if not available
+        // Get values for this timestamp, or null if not available
         const berValue = berMap.get(ts);
         const oroValue = oroMap.get(ts);
         
-        // Use NaN for missing values - Chart.js handles NaN better than null/undefined
-        berAligned.push(berValue !== undefined ? { x: ts, y: berValue } : NaN);
-        oroAligned.push(oroValue !== undefined ? { x: ts, y: oroValue } : NaN);
+        // For missing values, we need to provide a valid structure that Chart.js can handle
+        // Chart.js with time-based data needs {x, y} format, so we'll use null for the entire object
+        // and Chart.js should skip it with spanGaps: true
+        if (berValue !== undefined) {
+            berAligned.push({ x: ts, y: berValue });
+        } else {
+            berAligned.push(null);
+        }
+        if (oroValue !== undefined) {
+            oroAligned.push({ x: ts, y: oroValue });
+        } else {
+            oroAligned.push(null);
+        }
     });
     
     // Store sortedTimestamps in closure for tooltip access
