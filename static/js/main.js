@@ -35,13 +35,15 @@ function updateReservoirStats(code, data) {
     const formatDate = (dateString) => {
         if (!dateString) return '--';
         const date = new Date(dateString);
-        return date.toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        // Format: %a %Y-%m-%e-%H:%M (e.g., "Mon 2025-11-15-21:30")
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dayName = days[date.getDay()];
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${dayName} ${year}-${month}-${day}-${hours}:${minutes}`;
     };
 
     // Update storage
@@ -56,10 +58,10 @@ function updateReservoirStats(code, data) {
         elevationEl.textContent = formatNumber(data.reservoir_elevation);
     }
 
-    // Update timestamp
-    const timestampEl = document.getElementById(`timestamp-${code}`);
-    if (timestampEl) {
-        timestampEl.textContent = formatDate(data.timestamp);
+    // Update timestamp in header
+    const timestampHeaderEl = document.getElementById(`timestamp-header-${code}`);
+    if (timestampHeaderEl) {
+        timestampHeaderEl.textContent = formatDate(data.timestamp);
     }
 }
 

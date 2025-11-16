@@ -23,7 +23,10 @@
             <div class="reservoir-card" data-reservoir="{{ code }}">
                 <div class="card-header">
                     <h2>{{ info.name }}</h2>
-                    <p class="dam-name">{{ info.dam_name }}</p>
+                    <div class="dam-name-row">
+                        <p class="dam-name">{{ info.dam_name }}</p>
+                        <span class="last-updated-header" id="timestamp-header-{{ code }}">--</span>
+                    </div>
                 </div>
                 
                 <div class="card-stats" id="stats-{{ code }}">
@@ -36,10 +39,6 @@
                         <span class="stat-label-compact">Elevation:</span>
                         <span class="stat-value-compact" id="elevation-{{ code }}">--</span>
                         <span class="stat-unit-compact">feet</span>
-                    </div>
-                    <div class="stat-item-compact">
-                        <span class="stat-label-compact">Updated:</span>
-                        <span class="stat-value-compact stat-timestamp" id="timestamp-{{ code }}">--</span>
                     </div>
                 </div>
 

@@ -92,8 +92,8 @@ body {
 
 .card-header {
     border-bottom: 2px solid var(--border-color);
-    padding-bottom: 1rem;
-    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 .card-header h2 {
@@ -102,18 +102,34 @@ body {
     margin-bottom: 0.5rem;
 }
 
+.dam-name-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
 .dam-name {
     color: var(--text-secondary);
     font-size: 1rem;
     font-style: italic;
+    margin: 0;
+    flex: 1;
+}
+
+.last-updated-header {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-style: italic;
+    white-space: nowrap;
 }
 
 .card-stats {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
     background: linear-gradient(135deg, #F8FBFC 0%, #F0F7FA 100%);
     border-radius: 8px;
     align-items: center;
