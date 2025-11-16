@@ -5,55 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reservoir Dog - California Reservoir Levels</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <!-- Try CDN first, fallback to local -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" 
-            onerror="console.warn('Failed to load Chart.js from jsdelivr CDN, trying local...'); loadLocalChartJS();"
-            onload="window.chartJsLoadSuccess = true;"></script>
+    <!-- Load Chart.js - try CDN first, then local, then unpkg -->
     <script>
-        console.log('Chart.js loader script executing...');
-        console.log('Initial Chart check:', typeof Chart);
-        console.log('chartJsLoadSuccess:', window.chartJsLoadSuccess);
-        
-        function loadLocalChartJS() {
-            console.log('loadLocalChartJS called, Chart defined:', typeof Chart);
-            if (typeof Chart === 'undefined') {
-                console.log('Loading Chart.js from local static files...');
+        (function() {
+            console.log('[Chart.js Loader] Starting...');
+            window.chartJsLoadSuccess = false;
+            window.chartJsLoadFailed = false;
+            
+            function loadLocalChartJS() {
+                console.log('[Chart.js Loader] Loading from local static files...');
                 const localUrl = "{{ url_for('static', filename='js/lib/chart.umd.min.js') }}";
-                console.log('Local Chart.js URL:', localUrl);
+                console.log('[Chart.js Loader] Local URL:', localUrl);
                 const script = document.createElement('script');
                 script.src = localUrl;
+                script.async = false;
                 script.onerror = function() {
-                    console.error('Failed to load Chart.js from local files. URL was:', localUrl);
+                    console.error('[Chart.js Loader] Failed to load from local. URL:', localUrl);
                     // Try unpkg as last resort
-                    console.log('Trying unpkg as last resort...');
+                    console.log('[Chart.js Loader] Trying unpkg as last resort...');
                     const unpkgScript = document.createElement('script');
                     unpkgScript.src = 'https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js';
+                    unpkgScript.async = false;
                     unpkgScript.onload = function() {
-                        console.log('Chart.js loaded successfully from unpkg fallback');
+                        console.log('[Chart.js Loader] Loaded successfully from unpkg');
                         window.chartJsLoadSuccess = true;
                     };
                     unpkgScript.onerror = function() {
-                        console.error('All Chart.js loading methods failed');
+                        console.error('[Chart.js Loader] All loading methods failed');
                         window.chartJsLoadFailed = true;
                     };
                     document.head.appendChild(unpkgScript);
                 };
                 script.onload = function() {
-                    console.log('Chart.js loaded successfully from local files');
+                    console.log('[Chart.js Loader] Loaded successfully from local files');
                     window.chartJsLoadSuccess = true;
                 };
                 document.head.appendChild(script);
-            } else {
-                console.log('Chart already defined, skipping local load');
             }
-        }
-        // Fallback check after 1 second
-        setTimeout(function() {
-            console.log('1 second timeout check - Chart:', typeof Chart, 'Success:', window.chartJsLoadSuccess);
-            if (typeof Chart === 'undefined' && !window.chartJsLoadSuccess) {
+            
+            // Try CDN first
+            const cdnScript = document.createElement('script');
+            cdnScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+            cdnScript.async = false;
+            cdnScript.onload = function() {
+                console.log('[Chart.js Loader] Loaded successfully from CDN');
+                window.chartJsLoadSuccess = true;
+            };
+            cdnScript.onerror = function() {
+                console.warn('[Chart.js Loader] CDN failed, trying local...');
                 loadLocalChartJS();
-            }
-        }, 1000);
+            };
+            document.head.appendChild(cdnScript);
+            
+            // Fallback check after 2 seconds
+            setTimeout(function() {
+                console.log('[Chart.js Loader] 2 second check - Chart:', typeof Chart, 'Success:', window.chartJsLoadSuccess);
+                if (typeof Chart === 'undefined' && !window.chartJsLoadSuccess) {
+                    console.log('[Chart.js Loader] Chart still not loaded, triggering fallback...');
+                    loadLocalChartJS();
+                }
+            }, 2000);
+        })();
     </script>
 </head>
 <body>
