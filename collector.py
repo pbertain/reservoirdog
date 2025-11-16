@@ -40,54 +40,55 @@ class ReservoirCollector:
                 logger.error(f"Failed to fetch CDEC data for {reservoir_code}: {response.status_code}")
                 return None
             
-            html_content = response.text
+            soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Determine line counts based on reservoir
-            if reservoir_code == 'BER':
-                head_lines = 1826
-                tail_lines = 5
-            elif reservoir_code == 'ORO':
-                head_lines = 1485
-                tail_lines = 5
-            else:
-                head_lines = 1826
-                tail_lines = 5
-            
-            lines = html_content.splitlines()[:head_lines]
-            td_lines = [line for line in lines[-tail_lines:] if "<td" in line]
-            
-            if not td_lines:
-                logger.warning(f"No data found in HTML for {reservoir_code}")
+            # Find all tables - the data is typically in the last table
+            tables = soup.find_all('table')
+            if not tables:
+                logger.warning(f"No tables found in HTML for {reservoir_code}")
                 return None
             
-            soup = BeautifulSoup("\n".join(td_lines), 'html.parser')
+            # Get the last table (most recent data)
+            data_table = tables[-1]
+            rows = data_table.find_all('tr')
             
-            # Extract date-time stamp
-            date_td = soup.find('td')
-            if not date_td:
+            if not rows:
+                logger.warning(f"No rows found in table for {reservoir_code}")
                 return None
             
-            date_time_stamp_str = date_td.get_text(strip=True)
+            # Find the last row with valid data (not '--')
+            for row in reversed(rows):
+                cells = row.find_all('td')
+                if len(cells) >= 3:
+                    timestamp_str = cells[0].get_text(strip=True)
+                    elevation_str = cells[1].get_text(strip=True)
+                    storage_str = cells[2].get_text(strip=True)
+                    
+                    # Skip rows with missing data
+                    if elevation_str == '--' or storage_str == '--':
+                        continue
+                    
+                    try:
+                        # Parse timestamp
+                        timestamp = self._parse_timestamp(timestamp_str)
+                        
+                        # Parse numeric values
+                        res_ele = float(elevation_str.replace(',', ''))
+                        storage = float(storage_str.replace(',', ''))
+                        
+                        logger.info(f"Successfully parsed data for {reservoir_code}: {timestamp_str}, elevation={res_ele}, storage={storage}")
+                        return (timestamp, res_ele, storage)
+                    except (ValueError, Exception) as e:
+                        logger.debug(f"Skipping row due to parse error: {e}")
+                        continue
             
-            # Parse timestamp - format varies, try multiple patterns
-            timestamp = self._parse_timestamp(date_time_stamp_str)
-            
-            # Extract numeric values
-            numeric_values = [font.get_text(strip=True) for font in soup.find_all('font')]
-            
-            if len(numeric_values) >= 2:
-                try:
-                    res_ele = float(numeric_values[0].replace(',', ''))
-                    storage = float(numeric_values[1].replace(',', ''))
-                    return (timestamp, res_ele, storage)
-                except (ValueError, IndexError) as e:
-                    logger.error(f"Error parsing numeric values for {reservoir_code}: {e}")
-                    return None
-            
+            logger.warning(f"No valid data rows found for {reservoir_code}")
             return None
             
         except Exception as e:
             logger.error(f"Error collecting CDEC query data for {reservoir_code}: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             return None
     
     def collect_cdec_historical(self, reservoir_code):
