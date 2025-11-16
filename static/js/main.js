@@ -469,18 +469,18 @@ async function createChartJSCharts() {
 }
 
 // Wait for Chart.js to load
-function waitForChartJS(callback, maxAttempts = 50) {
+function waitForChartJS(callback, maxAttempts = 100) {
     if (typeof Chart !== 'undefined') {
         console.log('Chart.js loaded successfully');
         callback();
     } else if (maxAttempts > 0) {
         setTimeout(() => waitForChartJS(callback, maxAttempts - 1), 100);
     } else {
-        console.error('Chart.js failed to load after waiting');
+        console.error('Chart.js failed to load after waiting. Check network tab for CDN issues.');
         // Show error message in chart containers
         document.querySelectorAll('.grafana-panel-compact').forEach(panel => {
             if (!panel.querySelector('canvas') && !panel.textContent.includes('No data')) {
-                panel.innerHTML = '<p style="padding: 1rem; text-align: center; color: #d32f2f;">Chart library failed to load</p>';
+                panel.innerHTML = '<p style="padding: 1rem; text-align: center; color: #d32f2f; font-size: 0.8rem;">Chart library failed to load<br><span style="font-size: 0.7rem;">Check browser console</span></p>';
             }
         });
     }

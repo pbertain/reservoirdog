@@ -5,7 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reservoir Dog - California Reservoir Levels</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="console.error('Failed to load Chart.js')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="console.error('Failed to load Chart.js from jsdelivr')"></script>
+    <script>
+        // Fallback to unpkg if jsdelivr fails
+        if (typeof Chart === 'undefined') {
+            console.log('Chart.js not loaded from jsdelivr, trying unpkg...');
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js';
+            script.onerror = function() {
+                console.error('Failed to load Chart.js from unpkg as well');
+            };
+            document.head.appendChild(script);
+        }
+    </script>
 </head>
 <body>
     <header class="header">
