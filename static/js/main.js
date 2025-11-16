@@ -187,6 +187,12 @@ function createChart(reservoirCode, metric, dataPoints, label) {
     
     // Create chart
     try {
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded');
+            showChartPlaceholder(reservoirCode, metric);
+            return;
+        }
+        
         console.log(`Creating chart for ${reservoirCode} ${metric} with ${chartData.length} points`);
         console.log(`Labels:`, chartLabels);
         console.log(`Data:`, chartData);
@@ -346,6 +352,12 @@ function setupChartModals() {
                         return;
                     }
                     
+                    if (typeof Chart === 'undefined') {
+                        console.error('Chart.js is not loaded');
+                        modalBody.innerHTML = '<p style="padding: 2rem; text-align: center; color: #5A6C7D;">Chart library failed to load. Please refresh the page.</p>';
+                        return;
+                    }
+                    
                     const chartLabel = chartType === 'storage' ? 'Storage (acre-feet)' : 'Elevation (feet)';
                     const borderColor = chartType === 'storage' ? '#4A90E2' : '#5FB3B3';
                     const bgColor = chartType === 'storage' ? 'rgba(74, 144, 226, 0.1)' : 'rgba(95, 179, 179, 0.1)';
@@ -456,16 +468,40 @@ async function createChartJSCharts() {
     }
 }
 
+// Wait for Chart.js to load
+function waitForChartJS(callback, maxAttempts = 50) {
+    if (typeof Chart !== 'undefined') {
+        console.log('Chart.js loaded successfully');
+        callback();
+    } else if (maxAttempts > 0) {
+        setTimeout(() => waitForChartJS(callback, maxAttempts - 1), 100);
+    } else {
+        console.error('Chart.js failed to load after waiting');
+        // Show error message in chart containers
+        document.querySelectorAll('.grafana-panel-compact').forEach(panel => {
+            if (!panel.querySelector('canvas') && !panel.textContent.includes('No data')) {
+                panel.innerHTML = '<p style="padding: 1rem; text-align: center; color: #d32f2f;">Chart library failed to load</p>';
+            }
+        });
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadReservoirData();
-    createCharts();
-    setupChartModals();
+    
+    // Wait for Chart.js before creating charts
+    waitForChartJS(() => {
+        createCharts();
+        setupChartModals();
+    });
     
     // Refresh data every 5 minutes
     setInterval(() => {
         loadReservoirData();
-        createCharts();
+        if (typeof Chart !== 'undefined') {
+            createCharts();
+        }
     }, 5 * 60 * 1000);
 });
 
