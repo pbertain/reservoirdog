@@ -1,0 +1,136 @@
+---
+# Ansible playbook to deploy Reservoir Dog application - Dev Environment
+# Usage: ansible-playbook -i inventory deploy-app-dev.yml
+
+- name: Deploy Reservoir Dog application to Dev
+  hosts: dev
+  become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    environment: dev
+    deploy_path: /opt/dev/reservoirdog
+    deploy_port: 45081
+    repo_url: https://github.com/pbertain/reservoirdog.git
+    branch: dev
+
+  tasks:
+    - name: Ensure deployment directory exists
+      file:
+        path: "{{ deploy_path }}"
+        state: directory
+        owner: ansible
+        group: ansible
+        mode: '0755'
+
+    - name: Check if repository exists
+      stat:
+        path: "{{ deploy_path }}/.git"
+      register: repo_exists
+
+    - name: Clone repository if it doesn't exist
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ deploy_path }}"
+        version: "{{ branch }}"
+        update: no
+        accept_hostkey: yes
+        force: yes
+      when: not repo_exists.stat.exists
+      ignore_errors: yes
+
+    - name: Clone repository with SSL verification disabled (fallback)
+      shell: |
+        cd {{ deploy_path }}/..
+        GIT_SSL_NO_VERIFY=1 git clone {{ repo_url }} {{ deploy_path | basename }}
+      when: not repo_exists.stat.exists
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Checkout correct branch
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ deploy_path }}"
+        version: "{{ branch }}"
+        update: yes
+        accept_hostkey: yes
+        force: yes
+      when: repo_exists.stat.exists
+      ignore_errors: yes
+
+    - name: Pull latest changes
+      shell: |
+        cd {{ deploy_path }}
+        git fetch origin {{ branch }} || GIT_SSL_NO_VERIFY=1 git fetch origin {{ branch }}
+        git reset --hard origin/{{ branch }}
+      when: repo_exists.stat.exists
+
+    - name: Ensure virtual environment exists
+      file:
+        path: "{{ deploy_path }}/venv"
+        state: directory
+      when: not (lookup('file', deploy_path + '/venv') is defined)
+
+    - name: Create virtual environment
+      command: python3 -m venv {{ deploy_path }}/venv
+      args:
+        creates: "{{ deploy_path }}/venv/bin/python"
+      when: not (lookup('file', deploy_path + '/venv/bin/python') is defined)
+
+    - name: Install/upgrade pip
+      pip:
+        name: pip
+        state: latest
+        virtualenv: "{{ deploy_path }}/venv"
+        virtualenv_command: python3 -m venv
+
+    - name: Install Python dependencies
+      pip:
+        requirements: "{{ deploy_path }}/requirements.txt"
+        virtualenv: "{{ deploy_path }}/venv"
+        virtualenv_command: python3 -m venv
+
+    - name: Ensure data directory exists
+      file:
+        path: "{{ deploy_path }}/data"
+        state: directory
+        owner: ansible
+        group: ansible
+        mode: '0755'
+
+    - name: Initialize database if needed
+      command: "{{ deploy_path }}/venv/bin/python -c 'from database import init_db; init_db()'"
+      args:
+        chdir: "{{ deploy_path }}"
+        creates: "{{ deploy_path }}/data/reservoir_data.db"
+      environment:
+        ENVIRONMENT: "{{ environment }}"
+
+    - name: Get current commit SHA
+      shell: cd {{ deploy_path }} && git rev-parse HEAD
+      register: commit_sha
+      changed_when: false
+
+    - name: Get current commit message
+      shell: cd {{ deploy_path }} && git log -1 --pretty=%B
+      register: commit_msg
+      changed_when: false
+
+    - name: Record deployment in database
+      command: "{{ deploy_path }}/venv/bin/python {{ deploy_path }}/deploy_helper.py {{ environment }} '{{ commit_sha.stdout }}' '{{ commit_msg.stdout | replace(\"'\", \"'\"\"'\"\"'\") }}' {{ branch }} 'GitHub Actions'"
+      args:
+        chdir: "{{ deploy_path }}"
+      environment:
+        ENVIRONMENT: "{{ environment }}"
+      ignore_errors: yes
+
+    - name: Restart application service
+      systemd:
+        name: reservoirdog-dev
+        state: restarted
+        enabled: yes
+      ignore_errors: yes
+
+    - name: Display deployment status
+      debug:
+        msg: "Application deployed successfully to {{ environment }} environment ({{ inventory_hostname }})"
+

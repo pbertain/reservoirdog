@@ -26,74 +26,22 @@ jobs:
           ssh-keyscan -H host74.nird.club >> ~/.ssh/known_hosts
           ssh-keyscan -H host78.nird.club >> ~/.ssh/known_hosts
 
-      - name: Deploy to prod server
-        env:
-          DEPLOY_HOST: host74.nird.club
-          DEPLOY_USER: ansible
-          DEPLOY_PATH: /opt/prod/reservoirdog
-          DEPLOY_PORT: 45080
-        run: |
-          ssh -i ~/.ssh/nirdclub__id_ed25519 $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
-            set -e
-            
-            # Create directory if it doesn't exist
-            mkdir -p $DEPLOY_PATH
-            
-            # Clone repository if it doesn't exist, otherwise pull updates
-            if [ ! -d "$DEPLOY_PATH/.git" ]; then
-              echo "Repository not found, cloning..."
-              cd $(dirname $DEPLOY_PATH)
-              git clone https://github.com/pbertain/reservoirdog.git $(basename $DEPLOY_PATH) || \
-              GIT_SSL_NO_VERIFY=1 git clone https://github.com/pbertain/reservoirdog.git $(basename $DEPLOY_PATH)
-              cd $DEPLOY_PATH
-              git checkout main
-            else
-              echo "Repository exists, pulling updates..."
-              cd $DEPLOY_PATH
-              git fetch origin main || GIT_SSL_NO_VERIFY=1 git fetch origin main
-              git reset --hard origin/main
-            fi
-            
-            # Create virtual environment if it doesn't exist
-            if [ ! -d venv ]; then
-              python3 -m venv venv
-            fi
-            
-            # Activate venv and install dependencies
-            source venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-            
-            # Initialize database if needed
-            if [ ! -f data/reservoir_data.db ]; then
-              python -c "from database import init_db; init_db()"
-            fi
-            
-            # Record deployment in database
-            COMMIT_SHA=$(git rev-parse HEAD)
-            COMMIT_MSG=$(git log -1 --pretty=%B)
-            python deploy_helper.py prod "$COMMIT_SHA" "$COMMIT_MSG" "main" "GitHub Actions"
-            
-            # Restart application (using systemd or supervisor)
-            # If using systemd:
-            sudo systemctl restart reservoirdog-prod || true
-            
-            # Or if using a process manager script:
-            # pkill -f "python.*app.py" || true
-            # nohup venv/bin/python app.py > app.log 2>&1 &
-            
-            echo "Deployment completed successfully"
-          ENDSSH
-
       - name: Install Ansible
         run: |
           pip install ansible
 
-      - name: Deploy NGINX configuration
+      - name: Deploy application using Ansible
         run: |
           cd ansible
           # Update inventory to use the GitHub Actions SSH key path
           sed -i 's|~/.ssh/keys/nirdclub__id_ed25519|~/.ssh/nirdclub__id_ed25519|g' inventory
+          ansible-playbook -i inventory deploy-app-prod.yml \
+            --private-key ~/.ssh/nirdclub__id_ed25519 \
+            --become
+
+      - name: Deploy NGINX configuration using Ansible
+        run: |
+          cd ansible
           ansible-playbook -i inventory deploy-nginx-prod.yml \
             --private-key ~/.ssh/nirdclub__id_ed25519 \
             --become
