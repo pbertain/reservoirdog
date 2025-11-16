@@ -65,13 +65,20 @@ function updateReservoirStats(code, data) {
     }
 }
 
+// Get selected time range for a reservoir
+function getTimeRange(reservoirCode) {
+    const select = document.getElementById(`time-range-${reservoirCode}`);
+    return select ? parseInt(select.value) : 7; // Default to 1 week
+}
+
 // Create Chart.js charts
-async function createCharts() {
-    const reservoirs = ['BER', 'ORO'];
+async function createCharts(reservoirCode = null) {
+    const reservoirs = reservoirCode ? [reservoirCode] : ['BER', 'ORO'];
     
     for (const code of reservoirs) {
+        const days = getTimeRange(code);
         try {
-            const response = await fetch(`${API_BASE}/reservoir/${code}/data?days=30`);
+            const response = await fetch(`${API_BASE}/reservoir/${code}/data?days=${days}`);
             if (response.ok) {
                 const result = await response.json();
                 console.log(`API response for ${code}:`, result);
@@ -80,10 +87,10 @@ async function createCharts() {
                 
                 if (dataPoints.length > 0) {
                     // Create storage chart
-                    createChart(code, 'storage', dataPoints, 'Storage (acre-feet)');
+                    createChart(code, 'storage', dataPoints, 'Storage (acre-feet)', days);
                     
                     // Create elevation chart
-                    createChart(code, 'elevation', dataPoints, 'Elevation (feet)');
+                    createChart(code, 'elevation', dataPoints, 'Elevation (feet)', days);
                 } else {
                     console.warn(`No data points for ${code} - showing placeholder`);
                     showChartPlaceholder(code, 'storage');
@@ -115,9 +122,26 @@ function showChartPlaceholder(reservoirCode, metric) {
     }
 }
 
+// Format date label based on time range
+function formatDateLabel(date, days) {
+    if (days <= 7) {
+        // For 1 week: Show day of week, align to midnight
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const hours = date.getHours();
+        // Only show label at midnight (00:00) or if it's the first/last point
+        if (hours === 0) {
+            return dayNames[date.getDay()];
+        }
+        return ''; // Empty for non-midnight hours
+    } else {
+        // For longer ranges: Show month/day
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+}
+
 // Create a Chart.js chart
-function createChart(reservoirCode, metric, dataPoints, label) {
-    console.log(`createChart called: ${reservoirCode}, ${metric}, ${dataPoints.length} data points`);
+function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
+    console.log(`createChart called: ${reservoirCode}, ${metric}, ${dataPoints.length} data points, ${days} days`);
     
     const panel = document.getElementById(`grafana-${metric}-${reservoirCode}`);
     if (!panel) {
@@ -162,8 +186,8 @@ function createChart(reservoirCode, metric, dataPoints, label) {
                 console.warn(`Invalid date: ${d.timestamp}`);
                 continue;
             }
-            const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            chartLabels.push(label);
+            const dateLabel = formatDateLabel(date, days);
+            chartLabels.push(dateLabel);
             chartData.push(value);
         } catch (e) {
             console.warn(`Failed to parse timestamp: ${d.timestamp}`, e);
@@ -233,25 +257,37 @@ function createChart(reservoirCode, metric, dataPoints, label) {
                 x: {
                     display: true,
                     grid: {
-                        display: false
+                        display: days <= 7, // Show grid for weekly view
+                        color: 'rgba(0, 0, 0, 0.05)'
                     },
                     ticks: {
-                        maxTicksLimit: 6,
-                        font: { size: 9 }
+                        maxTicksLimit: days <= 7 ? 8 : 6,
+                        font: { size: 9 },
+                        callback: function(value, index) {
+                            // Only show non-empty labels
+                            const label = chartLabels[index];
+                            return label || '';
+                        }
                     }
                 },
                 y: {
                     display: true,
+                    min: metric === 'storage' ? 1000000 : 400, // 1.0M acre-feet or 400 feet
+                    max: metric === 'storage' ? 2000000 : 1000, // 2.0M acre-feet or 1000 feet
                     grid: {
                         color: 'rgba(0, 0, 0, 0.05)'
                     },
                     ticks: {
-                        font: { size: 9 },
+                        font: { size: 10 },
+                        stepSize: metric === 'storage' ? 200000 : 100, // 0.2M steps or 100 feet
                         callback: function(value) {
                             if (metric === 'storage') {
-                                return (value / 1000000).toFixed(1) + 'M';
+                                // Show: 1.0, 1.2, 1.4, 1.6, 1.8, 2.0
+                                return (value / 1000000).toFixed(1);
+                            } else {
+                                // Show elevation in feet
+                                return value.toFixed(0);
                             }
-                            return value.toFixed(0);
                         }
                     }
                 }
@@ -499,6 +535,17 @@ document.addEventListener('DOMContentLoaded', () => {
     waitForChartJS(() => {
         createCharts();
         setupChartModals();
+        
+        // Set up time range selectors
+        const reservoirs = ['BER', 'ORO'];
+        reservoirs.forEach(code => {
+            const select = document.getElementById(`time-range-${code}`);
+            if (select) {
+                select.addEventListener('change', () => {
+                    createCharts(code);
+                });
+            }
+        });
     });
     
     // Refresh data every 5 minutes
