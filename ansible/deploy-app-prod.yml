@@ -123,12 +123,23 @@
         ENVIRONMENT: "{{ deploy_env }}"
       ignore_errors: yes
 
-    - name: Restart application service
+    - name: Install systemd service file
+      copy:
+        src: "{{ playbook_dir }}/../conf/systemd/reservoirdog-prod.service"
+        dest: /etc/systemd/system/reservoirdog-prod.service
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start application service
       systemd:
         name: reservoirdog-prod
-        state: restarted
+        state: started
         enabled: yes
-      ignore_errors: yes
 
     - name: Display deployment status
       debug:
