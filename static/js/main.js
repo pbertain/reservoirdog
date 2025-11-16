@@ -65,43 +65,125 @@ function updateReservoirStats(code, data) {
     }
 }
 
-// Embed Grafana panels
-function embedGrafanaPanels() {
-    const panels = document.querySelectorAll('.grafana-panel, .grafana-panel-compact');
+// Create Chart.js charts
+async function createCharts() {
+    const reservoirs = ['BER', 'ORO'];
     
-    panels.forEach(panel => {
-        const panelId = panel.getAttribute('data-panel-id');
-        const reservoirCode = panel.closest('.reservoir-card').getAttribute('data-reservoir');
-        
-        // Determine which metric this panel should show
-        const isStorage = panelId.includes('storage');
-        const metric = isStorage ? 'storage' : 'elevation';
-        const isCompact = panel.classList.contains('grafana-panel-compact');
-        
-        // Create Grafana panel URL
-        // Note: This requires Grafana to be set up with appropriate dashboards
-        // For now, we'll create a placeholder that can be configured
-        const grafanaUrl = `${GRAFANA_URL}/d-solo/reservoir-dashboard/reservoir-dog?orgId=1&panelId=${panelId}&from=now-30d&to=now&theme=light`;
-        
-        // For now, show a placeholder until Grafana is configured
-        panel.innerHTML = `
-            <div style="padding: ${isCompact ? '1rem' : '2rem'}; text-align: center; color: #5A6C7D;">
-                <p style="font-size: ${isCompact ? '0.8rem' : '1rem'};">Chart placeholder</p>
-                <p style="font-size: ${isCompact ? '0.7rem' : '0.9rem'}; margin-top: 0.5rem;">
-                    ${isCompact ? 'Click to enlarge' : 'Configure Grafana dashboard'}
-                </p>
-            </div>
-        `;
-        
-        // Uncomment when Grafana is ready:
-        // const iframe = document.createElement('iframe');
-        // iframe.src = grafanaUrl;
-        // iframe.style.width = '100%';
-        // iframe.style.height = isCompact ? '150px' : '400px';
-        // iframe.style.border = 'none';
-        // iframe.title = `${reservoirCode} ${metric} chart`;
-        // panel.appendChild(iframe);
+    for (const code of reservoirs) {
+        try {
+            const response = await fetch(`${API_BASE}/reservoir/${code}/data?days=30`);
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Create storage chart
+                createChart(code, 'storage', data.data, 'Storage (acre-feet)');
+                
+                // Create elevation chart
+                createChart(code, 'elevation', data.data, 'Elevation (feet)');
+            }
+        } catch (error) {
+            console.error(`Error loading chart data for ${code}:`, error);
+        }
+    }
+}
+
+// Create a Chart.js chart
+function createChart(reservoirCode, metric, dataPoints, label) {
+    const panel = document.getElementById(`grafana-${metric}-${reservoirCode}`);
+    if (!panel) return;
+    
+    // Clear any existing content
+    panel.innerHTML = '<canvas></canvas>';
+    const canvas = panel.querySelector('canvas');
+    if (!canvas) return;
+    
+    // Prepare data
+    const labels = dataPoints.map(d => {
+        const date = new Date(d.timestamp);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
+    
+    const data = dataPoints.map(d => {
+        if (metric === 'storage') {
+            return d.storage;
+        } else {
+            return d.reservoir_elevation;
+        }
+    });
+    
+    // Create chart
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: label,
+                data: data,
+                borderColor: metric === 'storage' ? '#4A90E2' : '#5FB3B3',
+                backgroundColor: metric === 'storage' ? 'rgba(74, 144, 226, 0.1)' : 'rgba(95, 179, 179, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 10,
+                    titleFont: { size: 12 },
+                    bodyFont: { size: 11 }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        maxTicksLimit: 6,
+                        font: { size: 9 }
+                    }
+                },
+                y: {
+                    display: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        font: { size: 9 },
+                        callback: function(value) {
+                            if (metric === 'storage') {
+                                return (value / 1000000).toFixed(1) + 'M';
+                            }
+                            return value.toFixed(0);
+                        }
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+}
+
+// Embed Grafana panels (for future Grafana integration)
+function embedGrafanaPanels() {
+    // This function is kept for future Grafana integration
+    // Currently using Chart.js instead
 }
 
 // Chart modal functionality
@@ -124,31 +206,90 @@ function setupChartModals() {
             
             document.getElementById('chart-modal-title').textContent = title;
             
-            // Clone the panel content for the modal
-            const originalPanel = document.getElementById(`grafana-${chartType}-${reservoirCode}`);
+            // Load data and create full-size chart in modal
             const modalBody = document.getElementById('chart-modal-body');
-            modalBody.innerHTML = `<div class="grafana-panel" data-panel-id="${panelId}"></div>`;
+            modalBody.innerHTML = '<div class="grafana-panel"><canvas></canvas></div>';
+            const modalCanvas = modalBody.querySelector('canvas');
             
-            // Embed the full-size chart in modal
-            const modalPanel = modalBody.querySelector('.grafana-panel');
-            const grafanaUrl = `${GRAFANA_URL}/d-solo/reservoir-dashboard/reservoir-dog?orgId=1&panelId=${panelId}&from=now-30d&to=now&theme=light`;
-            
-            modalPanel.innerHTML = `
-                <div style="padding: 2rem; text-align: center; color: #5A6C7D;">
-                    <p>Full-size chart will be displayed here</p>
-                    <p style="font-size: 0.9rem; margin-top: 0.5rem;">
-                        Configure Grafana dashboard and update GRAFANA_URL in main.js
-                    </p>
-                </div>
-            `;
-            
-            // Uncomment when Grafana is ready:
-            // const iframe = document.createElement('iframe');
-            // iframe.src = grafanaUrl;
-            // iframe.style.width = '100%';
-            // iframe.style.height = '600px';
-            // iframe.style.border = 'none';
-            // modalPanel.appendChild(iframe);
+            // Fetch data for the chart
+            fetch(`${API_BASE}/reservoir/${reservoirCode}/data?days=90`)
+                .then(response => response.json())
+                .then(data => {
+                    const labels = data.data.map(d => {
+                        const date = new Date(d.timestamp);
+                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    });
+                    
+                    const chartData = data.data.map(d => {
+                        if (chartType === 'storage') {
+                            return d.storage;
+                        } else {
+                            return d.reservoir_elevation;
+                        }
+                    });
+                    
+                    const chartLabel = chartType === 'storage' ? 'Storage (acre-feet)' : 'Elevation (feet)';
+                    const borderColor = chartType === 'storage' ? '#4A90E2' : '#5FB3B3';
+                    const bgColor = chartType === 'storage' ? 'rgba(74, 144, 226, 0.1)' : 'rgba(95, 179, 179, 0.1)';
+                    
+                    new Chart(modalCanvas, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: chartLabel,
+                                data: chartData,
+                                borderColor: borderColor,
+                                backgroundColor: bgColor,
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 2,
+                                pointHoverRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    display: true,
+                                    grid: {
+                                        display: false
+                                    }
+                                },
+                                y: {
+                                    display: true,
+                                    grid: {
+                                        color: 'rgba(0, 0, 0, 0.05)'
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            if (chartType === 'storage') {
+                                                return (value / 1000000).toFixed(1) + 'M';
+                                            }
+                                            return value.toFixed(0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading chart data:', error);
+                    modalBody.innerHTML = '<p style="padding: 2rem; text-align: center; color: #5A6C7D;">Error loading chart data</p>';
+                });
             
             modal.classList.add('show');
         });
@@ -195,10 +336,13 @@ async function createChartJSCharts() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadReservoirData();
-    embedGrafanaPanels();
+    createCharts();
     setupChartModals();
     
     // Refresh data every 5 minutes
-    setInterval(loadReservoirData, 5 * 60 * 1000);
+    setInterval(() => {
+        loadReservoirData();
+        createCharts();
+    }, 5 * 60 * 1000);
 });
 
