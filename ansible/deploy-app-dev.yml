@@ -155,10 +155,10 @@
       systemd:
         daemon_reload: yes
 
-    - name: Enable and start application service
+    - name: Restart application service
       systemd:
         name: reservoirdog-dev
-        state: started
+        state: restarted
         enabled: yes
 
     - name: Enable and start collector service
