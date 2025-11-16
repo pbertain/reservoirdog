@@ -923,21 +923,7 @@ function prepareChartData(dataPoints, metric, days, reservoirCode) {
     return { values, labels, timestamps };
 }
 
-// Align data to a common label set (simplified - matches by index)
-function alignDataToLabels(data, targetLabels) {
-    const aligned = [];
-    for (let i = 0; i < targetLabels.length; i++) {
-        if (i < data.values.length) {
-            aligned.push({
-                x: data.timestamps[i],
-                y: data.values[i]
-            });
-        } else {
-            aligned.push(null);
-        }
-    }
-    return aligned;
-}
+// Note: alignDataToLabels function removed - now using timestamp-based alignment in createOverlayChart
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
