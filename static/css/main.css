@@ -251,6 +251,54 @@ body {
     margin-top: 0.5rem;
 }
 
+/* Overlay Charts Section */
+.overlay-charts-section {
+    max-width: 1200px;
+    margin: 3rem auto 2rem;
+    padding: 0 1rem;
+}
+
+.section-title {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+.overlay-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.overlay-chart-container {
+    background: var(--background-card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px var(--shadow);
+    border: 1px solid var(--border-color);
+}
+
+.overlay-chart-container h3 {
+    color: var(--water-blue-dark);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+.overlay-chart-panel {
+    width: 100%;
+    min-height: 300px;
+    height: 300px;
+    position: relative;
+}
+
+.overlay-chart-panel canvas {
+    max-height: 300px;
+}
+
 .chart-container-compact {
     padding: 0.75rem;
     background: var(--background-light);

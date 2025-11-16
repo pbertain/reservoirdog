@@ -680,6 +680,274 @@ function waitForChartJS(callback, maxAttempts = 150) {
     }
 }
 
+// Create overlay charts showing both reservoirs
+async function createOverlayCharts() {
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js not loaded, skipping overlay charts');
+        return;
+    }
+    
+    // Get time range from first reservoir (they should be the same)
+    const days = getTimeRange('BER');
+    
+    try {
+        // Fetch data for both reservoirs
+        const [berResponse, oroResponse] = await Promise.all([
+            fetch(`${API_BASE}/reservoir/BER/data?days=${days}`),
+            fetch(`${API_BASE}/reservoir/ORO/data?days=${days}`)
+        ]);
+        
+        if (!berResponse.ok || !oroResponse.ok) {
+            console.error('Failed to load data for overlay charts');
+            return;
+        }
+        
+        const berData = await berResponse.json();
+        const oroData = await oroResponse.json();
+        
+        // Create storage overlay chart
+        createOverlayChart('storage', berData.data || [], oroData.data || [], days, 'Storage (acre-feet)');
+        
+        // Create elevation overlay chart
+        createOverlayChart('elevation', berData.data || [], oroData.data || [], days, 'Elevation (feet)');
+    } catch (error) {
+        console.error('Error creating overlay charts:', error);
+    }
+}
+
+// Create a single overlay chart with both reservoirs
+function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
+    const panel = document.getElementById(`overlay-${metric}-chart`);
+    if (!panel) {
+        console.error(`Overlay panel not found: overlay-${metric}-chart`);
+        return;
+    }
+    
+    // Clear and create canvas
+    panel.innerHTML = '<canvas></canvas>';
+    const canvas = panel.querySelector('canvas');
+    if (!canvas) return;
+    
+    // Prepare data for both reservoirs
+    const berData = prepareChartData(berDataPoints, metric, days, 'BER');
+    const oroData = prepareChartData(oroDataPoints, metric, days, 'ORO');
+    
+    if (berData.values.length === 0 && oroData.values.length === 0) {
+        panel.innerHTML = '<p style="padding: 2rem; text-align: center; color: #5A6C7D;">No data available</p>';
+        return;
+    }
+    
+    // Use labels from the dataset with more points, or combine them
+    const labels = berData.labels.length >= oroData.labels.length ? berData.labels : oroData.labels;
+    
+    // Calculate dynamic Y-axis range based on all values
+    const allValues = [...berData.values, ...oroData.values];
+    const minValue = Math.min(...allValues);
+    const maxValue = Math.max(...allValues);
+    const range = maxValue - minValue;
+    const padding = range * 0.1;
+    
+    let yMin, yMax, stepSize;
+    if (metric === 'storage') {
+        yMin = Math.max(0, Math.floor((minValue - padding) / 100000) * 100000);
+        yMax = Math.ceil((maxValue + padding) / 100000) * 100000;
+        stepSize = Math.max(200000, Math.ceil((yMax - yMin) / 5 / 200000) * 200000);
+    } else {
+        yMin = Math.max(0, Math.floor((minValue - padding) / 50) * 50);
+        yMax = Math.ceil((maxValue + padding) / 50) * 50;
+        stepSize = Math.max(50, Math.ceil((yMax - yMin) / 5 / 50) * 50);
+    }
+    
+    // Align data to labels (simplified - assumes same timestamps)
+    const berAligned = alignDataToLabels(berData, labels);
+    const oroAligned = alignDataToLabels(oroData, labels);
+    
+    try {
+        new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Lake Berryessa',
+                        data: berAligned,
+                        borderColor: '#4A90E2',
+                        backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
+                    },
+                    {
+                        label: 'Lake Oroville',
+                        data: oroAligned,
+                        borderColor: '#5FB3B3',
+                        backgroundColor: 'rgba(95, 179, 179, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: { size: 12 },
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 10,
+                        titleFont: { size: 12 },
+                        bodyFont: { size: 11 },
+                        callbacks: {
+                            title: function(context) {
+                                const dataIndex = context[0].dataIndex;
+                                const dataPoint = berAligned[dataIndex] || oroAligned[dataIndex];
+                                if (dataPoint && typeof dataPoint === 'object' && dataPoint.x) {
+                                    const date = new Date(dataPoint.x);
+                                    return date.toLocaleString('en-US', { 
+                                        weekday: 'short',
+                                        month: 'short', 
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
+                                }
+                                return context[0].label || '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: {
+                            display: days <= 7,
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            maxTicksLimit: days <= 7 ? 8 : 6,
+                            font: { size: 10 },
+                            callback: function(value, index) {
+                                const label = labels[index];
+                                return label || '';
+                            }
+                        }
+                    },
+                    y: {
+                        display: true,
+                        min: yMin,
+                        max: yMax,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            font: { size: 10 },
+                            stepSize: stepSize,
+                            callback: function(value) {
+                                if (metric === 'storage') {
+                                    return (value / 1000000).toFixed(1);
+                                }
+                                return value.toFixed(0);
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+    } catch (error) {
+        console.error(`Error creating overlay chart for ${metric}:`, error);
+        panel.innerHTML = '<p style="padding: 2rem; text-align: center; color: #d32f2f;">Error creating chart</p>';
+    }
+}
+
+// Helper function to prepare chart data
+function prepareChartData(dataPoints, metric, days, reservoirCode) {
+    const values = [];
+    const labels = [];
+    const timestamps = [];
+    let lastDay = -1;
+    
+    for (let i = 0; i < dataPoints.length; i++) {
+        const d = dataPoints[i];
+        let value = null;
+        if (metric === 'storage') {
+            value = d.storage !== null && d.storage !== undefined ? d.storage : null;
+        } else {
+            value = d.reservoir_elevation !== null && d.reservoir_elevation !== undefined ? d.reservoir_elevation : null;
+        }
+        
+        if (value === null) continue;
+        
+        try {
+            const date = new Date(d.timestamp);
+            if (isNaN(date.getTime())) continue;
+            
+            let dateLabel = '';
+            if (days <= 7) {
+                const currentDay = date.getDate();
+                const hours = date.getHours();
+                const minutes = date.getMinutes();
+                
+                if ((hours === 0 && minutes === 0) || (currentDay !== lastDay && lastDay !== -1)) {
+                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    dateLabel = dayNames[date.getDay()];
+                    lastDay = currentDay;
+                } else if (i === 0) {
+                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    dateLabel = dayNames[date.getDay()];
+                    lastDay = currentDay;
+                }
+            } else {
+                dateLabel = formatDateLabel(date, days, values.length, dataPoints.length);
+            }
+            
+            labels.push(dateLabel);
+            values.push(value);
+            timestamps.push(d.timestamp);
+        } catch (e) {
+            continue;
+        }
+    }
+    
+    return { values, labels, timestamps };
+}
+
+// Align data to a common label set (simplified - matches by index)
+function alignDataToLabels(data, targetLabels) {
+    const aligned = [];
+    for (let i = 0; i < targetLabels.length; i++) {
+        if (i < data.values.length) {
+            aligned.push({
+                x: data.timestamps[i],
+                y: data.values[i]
+            });
+        } else {
+            aligned.push(null);
+        }
+    }
+    return aligned;
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadReservoirData();
@@ -687,6 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Wait for Chart.js before creating charts
     waitForChartJS(() => {
         createCharts();
+        createOverlayCharts();
         setupChartModals();
         
         // Set up time range selectors
@@ -696,6 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (select) {
                 select.addEventListener('change', () => {
                     createCharts(code);
+                    createOverlayCharts(); // Update overlay charts too
                 });
             }
         });
@@ -706,6 +976,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadReservoirData();
         if (typeof Chart !== 'undefined') {
             createCharts();
+            createOverlayCharts();
         }
     }, 5 * 60 * 1000);
 });
