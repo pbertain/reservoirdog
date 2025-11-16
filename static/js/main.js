@@ -196,8 +196,10 @@ function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
     // Prepare data - keep labels and data aligned
     const chartData = [];
     const chartLabels = [];
+    let lastDay = -1; // Track last day shown for week view
     
-    for (const d of dataPoints) {
+    for (let i = 0; i < dataPoints.length; i++) {
+        const d = dataPoints[i];
         let value = null;
         if (metric === 'storage') {
             value = d.storage !== null && d.storage !== undefined ? d.storage : null;
@@ -216,8 +218,29 @@ function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
                 console.warn(`Invalid date: ${d.timestamp}`);
                 continue;
             }
-            // Store full timestamp for tooltip
-            const dateLabel = formatDateLabel(date, days, chartData.length, dataPoints.length);
+            
+            // For week view, show first data point of each day
+            let dateLabel = '';
+            if (days <= 7) {
+                const currentDay = date.getDate();
+                const hours = date.getHours();
+                const minutes = date.getMinutes();
+                
+                // Show at midnight or first occurrence of each day
+                if ((hours === 0 && minutes === 0) || (currentDay !== lastDay && lastDay !== -1)) {
+                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    dateLabel = dayNames[date.getDay()];
+                    lastDay = currentDay;
+                } else if (i === 0) {
+                    // Always show first point
+                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    dateLabel = dayNames[date.getDay()];
+                    lastDay = currentDay;
+                }
+            } else {
+                dateLabel = formatDateLabel(date, days, chartData.length, dataPoints.length);
+            }
+            
             chartLabels.push(dateLabel);
             chartData.push({
                 x: d.timestamp,
