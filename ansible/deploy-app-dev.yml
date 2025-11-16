@@ -7,7 +7,7 @@
   become: yes
   vars:
     ansible_python_interpreter: /usr/bin/python3
-    environment: dev
+    deploy_env: dev
     deploy_path: /opt/dev/reservoirdog
     deploy_port: 45081
     repo_url: https://github.com/pbertain/reservoirdog.git
@@ -45,6 +45,7 @@
       when: not repo_exists.stat.exists
       ignore_errors: yes
       changed_when: false
+      failed_when: false
 
     - name: Checkout correct branch
       git:
@@ -64,17 +65,16 @@
         git reset --hard origin/{{ branch }}
       when: repo_exists.stat.exists
 
-    - name: Ensure virtual environment exists
-      file:
-        path: "{{ deploy_path }}/venv"
-        state: directory
-      when: not (lookup('file', deploy_path + '/venv') is defined)
+    - name: Check if virtual environment exists
+      stat:
+        path: "{{ deploy_path }}/venv/bin/python"
+      register: venv_exists
 
     - name: Create virtual environment
       command: python3 -m venv {{ deploy_path }}/venv
       args:
         creates: "{{ deploy_path }}/venv/bin/python"
-      when: not (lookup('file', deploy_path + '/venv/bin/python') is defined)
+      when: not venv_exists.stat.exists
 
     - name: Install/upgrade pip
       pip:
@@ -103,7 +103,7 @@
         chdir: "{{ deploy_path }}"
         creates: "{{ deploy_path }}/data/reservoir_data.db"
       environment:
-        ENVIRONMENT: "{{ environment }}"
+        ENVIRONMENT: "{{ deploy_env }}"
 
     - name: Get current commit SHA
       shell: cd {{ deploy_path }} && git rev-parse HEAD
@@ -120,7 +120,7 @@
       args:
         chdir: "{{ deploy_path }}"
       environment:
-        ENVIRONMENT: "{{ environment }}"
+        ENVIRONMENT: "{{ deploy_env }}"
       ignore_errors: yes
 
     - name: Restart application service
@@ -132,5 +132,5 @@
 
     - name: Display deployment status
       debug:
-        msg: "Application deployed successfully to {{ environment }} environment ({{ inventory_hostname }})"
+        msg: "Application deployed successfully to {{ deploy_env }} environment ({{ inventory_hostname }})"
 
