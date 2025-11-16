@@ -187,6 +187,10 @@ function createChart(reservoirCode, metric, dataPoints, label) {
     
     // Create chart
     try {
+        console.log(`Creating chart for ${reservoirCode} ${metric} with ${chartData.length} points`);
+        console.log(`Labels:`, chartLabels);
+        console.log(`Data:`, chartData);
+        
         new Chart(canvas, {
         type: 'line',
         data: {
@@ -198,9 +202,9 @@ function createChart(reservoirCode, metric, dataPoints, label) {
                 backgroundColor: metric === 'storage' ? 'rgba(74, 144, 226, 0.1)' : 'rgba(95, 179, 179, 0.1)',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.4,
-                pointRadius: 0,
-                pointHoverRadius: 4
+                tension: chartData.length > 2 ? 0.4 : 0, // No tension for very few points
+                pointRadius: chartData.length <= 5 ? 3 : 0, // Show points if few data points
+                pointHoverRadius: 5
             }]
         },
         options: {
