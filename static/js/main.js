@@ -807,24 +807,6 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
         oroAligned.push(oroValue !== undefined ? { x: ts, y: oroValue } : null);
     });
     
-    // Calculate dynamic Y-axis range based on all values
-    const allValues = [...berData.values, ...oroData.values];
-    const minValue = Math.min(...allValues);
-    const maxValue = Math.max(...allValues);
-    const range = maxValue - minValue;
-    const padding = range * 0.1;
-    
-    let yMin, yMax, stepSize;
-    if (metric === 'storage') {
-        yMin = Math.max(0, Math.floor((minValue - padding) / 100000) * 100000);
-        yMax = Math.ceil((maxValue + padding) / 100000) * 100000;
-        stepSize = Math.max(200000, Math.ceil((yMax - yMin) / 5 / 200000) * 200000);
-    } else {
-        yMin = Math.max(0, Math.floor((minValue - padding) / 50) * 50);
-        yMax = Math.ceil((maxValue + padding) / 50) * 50;
-        stepSize = Math.max(50, Math.ceil((yMax - yMin) / 5 / 50) * 50);
-    }
-    
     try {
         new Chart(canvas, {
             type: 'line',
