@@ -12,6 +12,11 @@ import subprocess
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 
+# Disable template caching in development
+if config.ENVIRONMENT == 'dev':
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
+    app.jinja_env.auto_reload = True
+
 
 @app.route('/')
 def index():
