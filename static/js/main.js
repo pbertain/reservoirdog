@@ -825,7 +825,6 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
         new Chart(canvas, {
             type: 'line',
             data: {
-                labels: labels,
                 datasets: [
                     {
                         label: 'Lake Berryessa',
@@ -893,6 +892,15 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                 },
                 scales: {
                     x: {
+                        type: 'time',
+                        time: {
+                            unit: days <= 1 ? 'hour' : (days <= 7 ? 'day' : (days <= 30 ? 'day' : 'month')),
+                            displayFormats: {
+                                hour: 'HH:mm',
+                                day: 'MMM d',
+                                month: 'MMM yyyy'
+                            }
+                        },
                         display: true,
                         grid: {
                             display: days <= 7,
@@ -900,11 +908,7 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                         },
                         ticks: {
                             maxTicksLimit: days <= 7 ? 8 : 6,
-                            font: { size: 10 },
-                            callback: function(value, index) {
-                                const label = labels[index];
-                                return label || '';
-                            }
+                            font: { size: 10 }
                         }
                     },
                     y: {
