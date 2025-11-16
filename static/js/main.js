@@ -752,9 +752,66 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
         stepSize = Math.max(50, Math.ceil((yMax - yMin) / 5 / 50) * 50);
     }
     
-    // Align data to labels (simplified - assumes same timestamps)
-    const berAligned = alignDataToLabels(berData, labels);
-    const oroAligned = alignDataToLabels(oroData, labels);
+    // Merge timestamps and create aligned datasets by timestamp
+    const allTimestamps = new Set();
+    berData.timestamps.forEach(ts => allTimestamps.add(ts));
+    oroData.timestamps.forEach(ts => allTimestamps.add(ts));
+    
+    // Sort timestamps
+    const sortedTimestamps = Array.from(allTimestamps).sort();
+    
+    // Create maps for quick lookup
+    const berMap = new Map();
+    berData.timestamps.forEach((ts, idx) => {
+        berMap.set(ts, berData.values[idx]);
+    });
+    
+    const oroMap = new Map();
+    oroData.timestamps.forEach((ts, idx) => {
+        oroMap.set(ts, oroData.values[idx]);
+    });
+    
+    // Rebuild labels and aligned data based on sorted timestamps
+    const alignedLabels = [];
+    const berAligned = [];
+    const oroAligned = [];
+    let lastDay = -1;
+    
+    sortedTimestamps.forEach((ts, idx) => {
+        const date = new Date(ts);
+        let label = '';
+        
+        // Generate label based on time range
+        if (days <= 7) {
+            const currentDay = date.getDate();
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            
+            if ((hours === 0 && minutes === 0) || (currentDay !== lastDay && lastDay !== -1)) {
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                label = dayNames[date.getDay()];
+                lastDay = currentDay;
+            } else if (idx === 0) {
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                label = dayNames[date.getDay()];
+                lastDay = currentDay;
+            }
+        } else {
+            label = formatDateLabel(date, days, idx, sortedTimestamps.length);
+        }
+        
+        alignedLabels.push(label);
+        
+        // Get values for this timestamp, or null if not available
+        const berValue = berMap.get(ts);
+        const oroValue = oroMap.get(ts);
+        
+        berAligned.push(berValue !== undefined ? { x: ts, y: berValue } : null);
+        oroAligned.push(oroValue !== undefined ? { x: ts, y: oroValue } : null);
+    });
+    
+    // Use aligned labels
+    const labels = alignedLabels;
     
     try {
         new Chart(canvas, {
