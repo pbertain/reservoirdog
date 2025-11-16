@@ -825,10 +825,16 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
         new Chart(canvas, {
             type: 'line',
             data: {
+                labels: labels,
                 datasets: [
                     {
                         label: 'Lake Berryessa',
-                        data: berAligned,
+                        data: berAligned.map((d, idx) => {
+                            // Convert {x, y} format to just y value for category scale
+                            // Use null for missing data points
+                            if (d === null) return null;
+                            return typeof d === 'object' && d.y !== undefined ? d.y : d;
+                        }),
                         borderColor: '#4A90E2',
                         backgroundColor: 'rgba(74, 144, 226, 0.1)',
                         borderWidth: 2,
@@ -840,7 +846,12 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                     },
                     {
                         label: 'Lake Oroville',
-                        data: oroAligned,
+                        data: oroAligned.map((d, idx) => {
+                            // Convert {x, y} format to just y value for category scale
+                            // Use null for missing data points
+                            if (d === null) return null;
+                            return typeof d === 'object' && d.y !== undefined ? d.y : d;
+                        }),
                         borderColor: '#5FB3B3',
                         backgroundColor: 'rgba(95, 179, 179, 0.1)',
                         borderWidth: 2,
@@ -879,6 +890,7 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                                 if (dataIndex >= 0 && dataIndex < sortedTimestampsForTooltip.length) {
                                     const ts = sortedTimestampsForTooltip[dataIndex];
                                     const date = new Date(ts);
+                                    // Format: %b %d %Hh%M (e.g., "Nov 16 14h30")
                                     const month = date.toLocaleString('en-US', { month: 'short' });
                                     const day = date.getDate();
                                     const hours = String(date.getHours()).padStart(2, '0');
@@ -892,15 +904,6 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                 },
                 scales: {
                     x: {
-                        type: 'time',
-                        time: {
-                            unit: days <= 1 ? 'hour' : (days <= 7 ? 'day' : (days <= 30 ? 'day' : 'month')),
-                            displayFormats: {
-                                hour: 'HH:mm',
-                                day: 'MMM d',
-                                month: 'MMM yyyy'
-                            }
-                        },
                         display: true,
                         grid: {
                             display: days <= 7,
@@ -908,7 +911,11 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                         },
                         ticks: {
                             maxTicksLimit: days <= 7 ? 8 : 6,
-                            font: { size: 10 }
+                            font: { size: 10 },
+                            callback: function(value, index) {
+                                const label = labels[index];
+                                return label || '';
+                            }
                         }
                     },
                     y: {
