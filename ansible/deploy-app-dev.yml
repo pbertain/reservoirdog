@@ -116,7 +116,7 @@
       changed_when: false
 
     - name: Record deployment in database
-      command: "{{ deploy_path }}/venv/bin/python {{ deploy_path }}/deploy_helper.py {{ environment }} '{{ commit_sha.stdout }}' '{{ commit_msg.stdout | replace(\"'\", \"'\"\"'\"\"'\") }}' {{ branch }} 'GitHub Actions'"
+      command: "{{ deploy_path }}/venv/bin/python {{ deploy_path }}/deploy_helper.py {{ deploy_env }} '{{ commit_sha.stdout }}' '{{ commit_msg.stdout | replace(\"'\", \"'\"\"'\"\"'\") }}' {{ branch }} 'GitHub Actions'"
       args:
         chdir: "{{ deploy_path }}"
       environment:
