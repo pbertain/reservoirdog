@@ -58,6 +58,10 @@
       when: repo_exists.stat.exists
       ignore_errors: yes
 
+    - name: Configure git safe directory
+      shell: git config --global --add safe.directory {{ deploy_path }}
+      when: repo_exists.stat.exists
+
     - name: Pull latest changes
       shell: |
         cd {{ deploy_path }}
