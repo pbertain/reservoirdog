@@ -35,15 +35,24 @@ jobs:
         run: |
           ssh -i ~/.ssh/nirdclub__id_ed25519 $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
             set -e
-            cd $DEPLOY_PATH
             
             # Create directory if it doesn't exist
             mkdir -p $DEPLOY_PATH
-            cd $DEPLOY_PATH
             
-            # Pull latest code
-            git fetch origin main
-            git reset --hard origin/main
+            # Clone repository if it doesn't exist, otherwise pull updates
+            if [ ! -d "$DEPLOY_PATH/.git" ]; then
+              echo "Repository not found, cloning..."
+              cd $(dirname $DEPLOY_PATH)
+              git clone https://github.com/pbertain/reservoirdog.git $(basename $DEPLOY_PATH) || \
+              GIT_SSL_NO_VERIFY=1 git clone https://github.com/pbertain/reservoirdog.git $(basename $DEPLOY_PATH)
+              cd $DEPLOY_PATH
+              git checkout main
+            else
+              echo "Repository exists, pulling updates..."
+              cd $DEPLOY_PATH
+              git fetch origin main || GIT_SSL_NO_VERIFY=1 git fetch origin main
+              git reset --hard origin/main
+            fi
             
             # Create virtual environment if it doesn't exist
             if [ ! -d venv ]; then
