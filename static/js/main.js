@@ -73,46 +73,94 @@ async function createCharts() {
         try {
             const response = await fetch(`${API_BASE}/reservoir/${code}/data?days=30`);
             if (response.ok) {
-                const data = await response.json();
+                const result = await response.json();
+                const dataPoints = result.data || [];
                 
-                // Create storage chart
-                createChart(code, 'storage', data.data, 'Storage (acre-feet)');
-                
-                // Create elevation chart
-                createChart(code, 'elevation', data.data, 'Elevation (feet)');
+                if (dataPoints.length > 0) {
+                    // Create storage chart
+                    createChart(code, 'storage', dataPoints, 'Storage (acre-feet)');
+                    
+                    // Create elevation chart
+                    createChart(code, 'elevation', dataPoints, 'Elevation (feet)');
+                } else {
+                    console.warn(`No data points for ${code}`);
+                    showChartPlaceholder(code, 'storage');
+                    showChartPlaceholder(code, 'elevation');
+                }
+            } else {
+                console.error(`Failed to load data for ${code}: ${response.status}`);
+                showChartPlaceholder(code, 'storage');
+                showChartPlaceholder(code, 'elevation');
             }
         } catch (error) {
             console.error(`Error loading chart data for ${code}:`, error);
+            showChartPlaceholder(code, 'storage');
+            showChartPlaceholder(code, 'elevation');
         }
+    }
+}
+
+// Show placeholder when no data
+function showChartPlaceholder(reservoirCode, metric) {
+    const panel = document.getElementById(`grafana-${metric}-${reservoirCode}`);
+    if (panel) {
+        panel.innerHTML = `
+            <div style="padding: 1rem; text-align: center; color: #5A6C7D; display: flex; align-items: center; justify-content: center; height: 100%;">
+                <p style="font-size: 0.8rem;">No data yet<br><span style="font-size: 0.7rem;">Collecting...</span></p>
+            </div>
+        `;
     }
 }
 
 // Create a Chart.js chart
 function createChart(reservoirCode, metric, dataPoints, label) {
     const panel = document.getElementById(`grafana-${metric}-${reservoirCode}`);
-    if (!panel) return;
+    if (!panel) {
+        console.error(`Panel not found: grafana-${metric}-${reservoirCode}`);
+        return;
+    }
+    
+    if (!dataPoints || dataPoints.length === 0) {
+        console.warn(`No data points for ${reservoirCode} ${metric}`);
+        showChartPlaceholder(reservoirCode, metric);
+        return;
+    }
     
     // Clear any existing content
     panel.innerHTML = '<canvas></canvas>';
     const canvas = panel.querySelector('canvas');
-    if (!canvas) return;
+    if (!canvas) {
+        console.error('Canvas element not created');
+        return;
+    }
     
     // Prepare data
     const labels = dataPoints.map(d => {
-        const date = new Date(d.timestamp);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    });
+        try {
+            const date = new Date(d.timestamp);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } catch (e) {
+            return '';
+        }
+    }).filter(l => l);
     
     const data = dataPoints.map(d => {
         if (metric === 'storage') {
-            return d.storage;
+            return d.storage !== null && d.storage !== undefined ? d.storage : null;
         } else {
-            return d.reservoir_elevation;
+            return d.reservoir_elevation !== null && d.reservoir_elevation !== undefined ? d.reservoir_elevation : null;
         }
-    });
+    }).filter(v => v !== null);
+    
+    if (data.length === 0) {
+        console.warn(`No valid data for ${reservoirCode} ${metric}`);
+        showChartPlaceholder(reservoirCode, metric);
+        return;
+    }
     
     // Create chart
-    new Chart(canvas, {
+    try {
+        new Chart(canvas, {
         type: 'line',
         data: {
             labels: labels,
@@ -177,7 +225,11 @@ function createChart(reservoirCode, metric, dataPoints, label) {
                 intersect: false
             }
         }
-    });
+        });
+    } catch (error) {
+        console.error(`Error creating chart for ${reservoirCode} ${metric}:`, error);
+        showChartPlaceholder(reservoirCode, metric);
+    }
 }
 
 // Embed Grafana panels (for future Grafana integration)
@@ -213,26 +265,48 @@ function setupChartModals() {
             
             // Fetch data for the chart
             fetch(`${API_BASE}/reservoir/${reservoirCode}/data?days=90`)
-                .then(response => response.json())
-                .then(data => {
-                    const labels = data.data.map(d => {
-                        const date = new Date(d.timestamp);
-                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    });
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    const dataPoints = result.data || [];
                     
-                    const chartData = data.data.map(d => {
-                        if (chartType === 'storage') {
-                            return d.storage;
-                        } else {
-                            return d.reservoir_elevation;
+                    if (dataPoints.length === 0) {
+                        modalBody.innerHTML = '<p style="padding: 2rem; text-align: center; color: #5A6C7D;">No data available yet. Data is being collected.</p>';
+                        return;
+                    }
+                    
+                    const labels = dataPoints.map(d => {
+                        try {
+                            const date = new Date(d.timestamp);
+                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        } catch (e) {
+                            return '';
                         }
-                    });
+                    }).filter(l => l);
+                    
+                    const chartData = dataPoints.map(d => {
+                        if (chartType === 'storage') {
+                            return d.storage !== null && d.storage !== undefined ? d.storage : null;
+                        } else {
+                            return d.reservoir_elevation !== null && d.reservoir_elevation !== undefined ? d.reservoir_elevation : null;
+                        }
+                    }).filter(v => v !== null);
+                    
+                    if (chartData.length === 0) {
+                        modalBody.innerHTML = '<p style="padding: 2rem; text-align: center; color: #5A6C7D;">No valid data available for this chart.</p>';
+                        return;
+                    }
                     
                     const chartLabel = chartType === 'storage' ? 'Storage (acre-feet)' : 'Elevation (feet)';
                     const borderColor = chartType === 'storage' ? '#4A90E2' : '#5FB3B3';
                     const bgColor = chartType === 'storage' ? 'rgba(74, 144, 226, 0.1)' : 'rgba(95, 179, 179, 0.1)';
                     
-                    new Chart(modalCanvas, {
+                    try {
+                        new Chart(modalCanvas, {
                         type: 'line',
                         data: {
                             labels: labels,
@@ -284,11 +358,15 @@ function setupChartModals() {
                                 }
                             }
                         }
-                    });
+                        });
+                    } catch (chartError) {
+                        console.error('Error creating chart:', chartError);
+                        modalBody.innerHTML = '<p style="padding: 2rem; text-align: center; color: #5A6C7D;">Error creating chart. Please check console for details.</p>';
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading chart data:', error);
-                    modalBody.innerHTML = '<p style="padding: 2rem; text-align: center; color: #5A6C7D;">Error loading chart data</p>';
+                    modalBody.innerHTML = `<p style="padding: 2rem; text-align: center; color: #5A6C7D;">Error loading chart data: ${error.message}</p>`;
                 });
             
             modal.classList.add('show');
