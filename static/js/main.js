@@ -65,7 +65,7 @@ function updateReservoirStats(code, data) {
 
 // Embed Grafana panels
 function embedGrafanaPanels() {
-    const panels = document.querySelectorAll('.grafana-panel');
+    const panels = document.querySelectorAll('.grafana-panel, .grafana-panel-compact');
     
     panels.forEach(panel => {
         const panelId = panel.getAttribute('data-panel-id');
@@ -74,35 +74,101 @@ function embedGrafanaPanels() {
         // Determine which metric this panel should show
         const isStorage = panelId.includes('storage');
         const metric = isStorage ? 'storage' : 'elevation';
+        const isCompact = panel.classList.contains('grafana-panel-compact');
         
         // Create Grafana panel URL
         // Note: This requires Grafana to be set up with appropriate dashboards
         // For now, we'll create a placeholder that can be configured
         const grafanaUrl = `${GRAFANA_URL}/d-solo/reservoir-dashboard/reservoir-dog?orgId=1&panelId=${panelId}&from=now-30d&to=now&theme=light`;
         
-        // Create iframe for Grafana panel
-        const iframe = document.createElement('iframe');
-        iframe.src = grafanaUrl;
-        iframe.style.width = '100%';
-        iframe.style.height = '400px';
-        iframe.style.border = 'none';
-        iframe.title = `${reservoirCode} ${metric} chart`;
-        
         // For now, show a placeholder until Grafana is configured
         panel.innerHTML = `
-            <div style="padding: 2rem; text-align: center; color: #5A6C7D;">
-                <p>Grafana panel will be embedded here</p>
-                <p style="font-size: 0.9rem; margin-top: 0.5rem;">
-                    Configure Grafana dashboard and update GRAFANA_URL in main.js
-                </p>
-                <p style="font-size: 0.8rem; margin-top: 0.5rem; font-style: italic;">
-                    Panel ID: ${panelId}
+            <div style="padding: ${isCompact ? '1rem' : '2rem'}; text-align: center; color: #5A6C7D;">
+                <p style="font-size: ${isCompact ? '0.8rem' : '1rem'};">Chart placeholder</p>
+                <p style="font-size: ${isCompact ? '0.7rem' : '0.9rem'}; margin-top: 0.5rem;">
+                    ${isCompact ? 'Click to enlarge' : 'Configure Grafana dashboard'}
                 </p>
             </div>
         `;
         
         // Uncomment when Grafana is ready:
+        // const iframe = document.createElement('iframe');
+        // iframe.src = grafanaUrl;
+        // iframe.style.width = '100%';
+        // iframe.style.height = isCompact ? '150px' : '400px';
+        // iframe.style.border = 'none';
+        // iframe.title = `${reservoirCode} ${metric} chart`;
         // panel.appendChild(iframe);
+    });
+}
+
+// Chart modal functionality
+function setupChartModals() {
+    const modal = document.getElementById('chart-modal');
+    const closeBtn = document.querySelector('.chart-modal-close');
+    const chartContainers = document.querySelectorAll('.chart-container-compact');
+    
+    // Open modal on chart click
+    chartContainers.forEach(container => {
+        container.addEventListener('click', () => {
+            const chartType = container.getAttribute('data-chart-type');
+            const reservoirCode = container.getAttribute('data-reservoir');
+            const reservoirName = container.closest('.reservoir-card').querySelector('h2').textContent;
+            
+            const title = `${reservoirName} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Over Time`;
+            const panelId = chartType === 'storage' 
+                ? `storage-${reservoirCode}` 
+                : `elevation-${reservoirCode}`;
+            
+            document.getElementById('chart-modal-title').textContent = title;
+            
+            // Clone the panel content for the modal
+            const originalPanel = document.getElementById(`grafana-${chartType}-${reservoirCode}`);
+            const modalBody = document.getElementById('chart-modal-body');
+            modalBody.innerHTML = `<div class="grafana-panel" data-panel-id="${panelId}"></div>`;
+            
+            // Embed the full-size chart in modal
+            const modalPanel = modalBody.querySelector('.grafana-panel');
+            const grafanaUrl = `${GRAFANA_URL}/d-solo/reservoir-dashboard/reservoir-dog?orgId=1&panelId=${panelId}&from=now-30d&to=now&theme=light`;
+            
+            modalPanel.innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: #5A6C7D;">
+                    <p>Full-size chart will be displayed here</p>
+                    <p style="font-size: 0.9rem; margin-top: 0.5rem;">
+                        Configure Grafana dashboard and update GRAFANA_URL in main.js
+                    </p>
+                </div>
+            `;
+            
+            // Uncomment when Grafana is ready:
+            // const iframe = document.createElement('iframe');
+            // iframe.src = grafanaUrl;
+            // iframe.style.width = '100%';
+            // iframe.style.height = '600px';
+            // iframe.style.border = 'none';
+            // modalPanel.appendChild(iframe);
+            
+            modal.classList.add('show');
+        });
+    });
+    
+    // Close modal
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('show');
+    });
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('show');
+        }
+    });
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+            modal.classList.remove('show');
+        }
     });
 }
 
@@ -128,6 +194,7 @@ async function createChartJSCharts() {
 document.addEventListener('DOMContentLoaded', () => {
     loadReservoirData();
     embedGrafanaPanels();
+    setupChartModals();
     
     // Refresh data every 5 minutes
     setInterval(loadReservoirData, 5 * 60 * 1000);

@@ -109,13 +109,15 @@ body {
 }
 
 .card-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-    padding: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
     background: linear-gradient(135deg, #F8FBFC 0%, #F0F7FA 100%);
     border-radius: 8px;
+    align-items: center;
+    justify-content: space-around;
 }
 
 .stat-item {
@@ -123,6 +125,30 @@ body {
     flex-direction: column;
     align-items: center;
     text-align: center;
+}
+
+.stat-item-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+}
+
+.stat-label-compact {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.stat-value-compact {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--water-blue-dark);
+}
+
+.stat-unit-compact {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
 }
 
 .stat-label {
@@ -167,9 +193,47 @@ body {
     font-weight: 600;
 }
 
+.charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.chart-container-compact {
+    padding: 0.75rem;
+    background: var(--background-light);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chart-container-compact:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-hover);
+}
+
+.chart-container-compact h4 {
+    color: var(--water-blue-dark);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    text-align: center;
+}
+
 .grafana-panel {
     width: 100%;
     min-height: 300px;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.grafana-panel-compact {
+    width: 100%;
+    min-height: 150px;
     background: white;
     border-radius: 4px;
     border: 1px solid var(--border-color);
@@ -181,6 +245,96 @@ body {
     width: 100%;
     height: 400px;
     border: none;
+}
+
+.grafana-panel-compact iframe {
+    width: 100%;
+    height: 150px;
+    border: none;
+}
+
+/* Chart Modal */
+.chart-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    animation: fadeIn 0.3s;
+}
+
+.chart-modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-modal-content {
+    background-color: white;
+    margin: auto;
+    padding: 2rem;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 1200px;
+    max-height: 90vh;
+    overflow: auto;
+    position: relative;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s;
+}
+
+.chart-modal-close {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--text-secondary);
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.chart-modal-close:hover {
+    color: var(--water-blue-dark);
+}
+
+#chart-modal-title {
+    color: var(--water-blue-dark);
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+#chart-modal-body {
+    min-height: 500px;
+}
+
+#chart-modal-body .grafana-panel {
+    min-height: 500px;
+}
+
+#chart-modal-body .grafana-panel iframe {
+    height: 600px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .footer {

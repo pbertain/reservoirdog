@@ -27,31 +27,31 @@
                 </div>
                 
                 <div class="card-stats" id="stats-{{ code }}">
-                    <div class="stat-item">
-                        <span class="stat-label">Current Storage</span>
-                        <span class="stat-value" id="storage-{{ code }}">--</span>
-                        <span class="stat-unit">acre-feet</span>
+                    <div class="stat-item-compact">
+                        <span class="stat-label-compact">Storage:</span>
+                        <span class="stat-value-compact" id="storage-{{ code }}">--</span>
+                        <span class="stat-unit-compact">acre-feet</span>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Elevation</span>
-                        <span class="stat-value" id="elevation-{{ code }}">--</span>
-                        <span class="stat-unit">feet</span>
+                    <div class="stat-item-compact">
+                        <span class="stat-label-compact">Elevation:</span>
+                        <span class="stat-value-compact" id="elevation-{{ code }}">--</span>
+                        <span class="stat-unit-compact">feet</span>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Last Updated</span>
-                        <span class="stat-value stat-timestamp" id="timestamp-{{ code }}">--</span>
+                    <div class="stat-item-compact">
+                        <span class="stat-label-compact">Updated:</span>
+                        <span class="stat-value-compact stat-timestamp" id="timestamp-{{ code }}">--</span>
                     </div>
                 </div>
 
-                <div class="chart-container">
-                    <h3>Storage Over Time</h3>
-                    <!-- Grafana panel will be embedded here -->
-                    <div class="grafana-panel" id="grafana-storage-{{ code }}" data-panel-id="storage-{{ code }}"></div>
-                </div>
-
-                <div class="chart-container">
-                    <h3>Elevation Over Time</h3>
-                    <div class="grafana-panel" id="grafana-elevation-{{ code }}" data-panel-id="elevation-{{ code }}"></div>
+                <div class="charts-row">
+                    <div class="chart-container-compact" data-chart-type="storage" data-reservoir="{{ code }}">
+                        <h4>Storage</h4>
+                        <div class="grafana-panel-compact" id="grafana-storage-{{ code }}" data-panel-id="storage-{{ code }}"></div>
+                    </div>
+                    <div class="chart-container-compact" data-chart-type="elevation" data-reservoir="{{ code }}">
+                        <h4>Elevation</h4>
+                        <div class="grafana-panel-compact" id="grafana-elevation-{{ code }}" data-panel-id="elevation-{{ code }}"></div>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -63,6 +63,15 @@
         <p class="footer-note">Note: Lake Berryessa data before 1997 is sporadic</p>
         <p style="margin-top: 1rem;"><a href="{{ url_for('deployments') }}" style="color: white; text-decoration: underline;">View Deployment History</a></p>
     </footer>
+
+    <!-- Chart Modal -->
+    <div id="chart-modal" class="chart-modal">
+        <div class="chart-modal-content">
+            <span class="chart-modal-close">&times;</span>
+            <h3 id="chart-modal-title"></h3>
+            <div id="chart-modal-body"></div>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
