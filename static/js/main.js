@@ -74,7 +74,9 @@ async function createCharts() {
             const response = await fetch(`${API_BASE}/reservoir/${code}/data?days=30`);
             if (response.ok) {
                 const result = await response.json();
+                console.log(`API response for ${code}:`, result);
                 const dataPoints = result.data || [];
+                console.log(`Data points for ${code}:`, dataPoints.length, dataPoints);
                 
                 if (dataPoints.length > 0) {
                     // Create storage chart
@@ -83,12 +85,13 @@ async function createCharts() {
                     // Create elevation chart
                     createChart(code, 'elevation', dataPoints, 'Elevation (feet)');
                 } else {
-                    console.warn(`No data points for ${code}`);
+                    console.warn(`No data points for ${code} - showing placeholder`);
                     showChartPlaceholder(code, 'storage');
                     showChartPlaceholder(code, 'elevation');
                 }
             } else {
-                console.error(`Failed to load data for ${code}: ${response.status}`);
+                const errorText = await response.text();
+                console.error(`Failed to load data for ${code}: ${response.status} - ${errorText}`);
                 showChartPlaceholder(code, 'storage');
                 showChartPlaceholder(code, 'elevation');
             }
@@ -114,6 +117,8 @@ function showChartPlaceholder(reservoirCode, metric) {
 
 // Create a Chart.js chart
 function createChart(reservoirCode, metric, dataPoints, label) {
+    console.log(`createChart called: ${reservoirCode}, ${metric}, ${dataPoints.length} data points`);
+    
     const panel = document.getElementById(`grafana-${metric}-${reservoirCode}`);
     if (!panel) {
         console.error(`Panel not found: grafana-${metric}-${reservoirCode}`);
@@ -146,10 +151,17 @@ function createChart(reservoirCode, metric, dataPoints, label) {
             value = d.reservoir_elevation !== null && d.reservoir_elevation !== undefined ? d.reservoir_elevation : null;
         }
         
-        if (value === null) continue;
+        if (value === null) {
+            console.warn(`Null value for ${reservoirCode} ${metric} at ${d.timestamp}`);
+            continue;
+        }
         
         try {
             const date = new Date(d.timestamp);
+            if (isNaN(date.getTime())) {
+                console.warn(`Invalid date: ${d.timestamp}`);
+                continue;
+            }
             const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             chartLabels.push(label);
             chartData.push(value);
@@ -159,8 +171,10 @@ function createChart(reservoirCode, metric, dataPoints, label) {
         }
     }
     
+    console.log(`Processed data for ${reservoirCode} ${metric}: ${chartData.length} points`);
+    
     if (chartData.length === 0 || chartLabels.length === 0) {
-        console.warn(`No valid data for ${reservoirCode} ${metric}`);
+        console.warn(`No valid data for ${reservoirCode} ${metric} after processing`);
         showChartPlaceholder(reservoirCode, metric);
         return;
     }
