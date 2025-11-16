@@ -123,13 +123,16 @@
         ENVIRONMENT: "{{ deploy_env }}"
       ignore_errors: yes
 
-    - name: Install systemd service file
+    - name: Install systemd service files
       copy:
-        src: "{{ playbook_dir }}/../conf/systemd/reservoirdog-prod.service"
-        dest: /etc/systemd/system/reservoirdog-prod.service
+        src: "{{ playbook_dir }}/../conf/systemd/{{ item }}"
+        dest: /etc/systemd/system/{{ item }}
         mode: '0644'
         owner: root
         group: root
+      loop:
+        - reservoirdog-prod.service
+        - reservoirdog-collector-prod.service
 
     - name: Reload systemd daemon
       systemd:
@@ -138,6 +141,12 @@
     - name: Enable and start application service
       systemd:
         name: reservoirdog-prod
+        state: started
+        enabled: yes
+
+    - name: Enable and start collector service
+      systemd:
+        name: reservoirdog-collector-prod
         state: started
         enabled: yes
 
