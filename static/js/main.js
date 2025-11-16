@@ -132,20 +132,25 @@ function formatDateLabel(date, days, index = null, totalPoints = null) {
         }
         return '';
     } else if (days <= 7) {
-        // For 1 week: Show day of week at midnight, or first/last point
+        // For 1 week: Show day of week at midnight, or first occurrence of each day
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const hours = date.getHours();
+        const minutes = date.getMinutes();
         const isFirst = index === 0;
         const isLast = index !== null && totalPoints !== null && index === totalPoints - 1;
         
-        if (hours === 0 || isFirst || isLast) {
-            const dayName = dayNames[date.getDay()];
-            // Add date for first occurrence of each day
-            if (hours === 0 || isFirst) {
-                return dayName;
-            }
-            return dayName;
+        // Show label at midnight (00:00) or first data point of each day
+        if (hours === 0 && minutes === 0) {
+            return dayNames[date.getDay()];
         }
+        
+        // Also show first and last points
+        if (isFirst || isLast) {
+            return dayNames[date.getDay()];
+        }
+        
+        // Show first data point of each day (when hour changes from previous day)
+        // This will be handled by checking if it's the first point with this day
         return '';
     } else if (days <= 30) {
         // For 1 month: Show date every few days
