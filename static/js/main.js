@@ -125,10 +125,33 @@ function showChartPlaceholder(reservoirCode, metric) {
 // Format date label based on time range
 function formatDateLabel(date, days, index = null, totalPoints = null) {
     if (days <= 1) {
-        // For 1 day: Show time every 2 hours (00:00, 02:00, 04:00, etc.)
+        // For 1 day: Show time in format %b %d %Hh%M (e.g., "Nov 16 14h30")
+        // Show every 2 hours or at every data point if fewer than 12 points
         const hours = date.getHours();
-        if (hours % 2 === 0) {
-            return String(hours).padStart(2, '0') + ':00';
+        const minutes = date.getMinutes();
+        
+        // If we have many data points, show every 2 hours
+        // If we have fewer points, show more frequently
+        if (totalPoints && totalPoints <= 12) {
+            // Show all labels for small datasets
+            const month = date.toLocaleString('en-US', { month: 'short' });
+            const day = date.getDate();
+            const hoursStr = String(hours).padStart(2, '0');
+            const minutesStr = String(minutes).padStart(2, '0');
+            return `${month} ${day} ${hoursStr}h${minutesStr}`;
+        } else if (hours % 2 === 0 && minutes === 0) {
+            // Show every 2 hours at the hour
+            const month = date.toLocaleString('en-US', { month: 'short' });
+            const day = date.getDate();
+            const hoursStr = String(hours).padStart(2, '0');
+            return `${month} ${day} ${hoursStr}h00`;
+        } else if (hours % 2 === 0 && minutes % 30 === 0) {
+            // Also show at 30 minutes past even hours
+            const month = date.toLocaleString('en-US', { month: 'short' });
+            const day = date.getDate();
+            const hoursStr = String(hours).padStart(2, '0');
+            const minutesStr = String(minutes).padStart(2, '0');
+            return `${month} ${day} ${hoursStr}h${minutesStr}`;
         }
         return '';
     } else if (days <= 7) {
@@ -219,9 +242,12 @@ function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
                 continue;
             }
             
-            // For week view, show first data point of each day
+            // Generate label based on time range
             let dateLabel = '';
-            if (days <= 7) {
+            if (days <= 1) {
+                // For 1 day: Use formatDateLabel which shows %b %d %Hh%M format
+                dateLabel = formatDateLabel(date, days, chartData.length, dataPoints.length);
+            } else if (days <= 7) {
                 const currentDay = date.getDate();
                 const hours = date.getHours();
                 const minutes = date.getMinutes();
@@ -353,7 +379,7 @@ function createChart(reservoirCode, metric, dataPoints, label, days = 7) {
                         color: 'rgba(0, 0, 0, 0.05)'
                     },
                     ticks: {
-                        maxTicksLimit: days <= 7 ? 8 : 6,
+                        maxTicksLimit: days <= 1 ? 12 : (days <= 7 ? 8 : 6),
                         font: { size: 9 },
                         callback: function(value, index) {
                             // Only show non-empty labels
@@ -779,7 +805,10 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
         let label = '';
         
         // Generate label based on time range
-        if (days <= 7) {
+        if (days <= 1) {
+            // For 1 day: Use formatDateLabel which shows %b %d %Hh%M format
+            label = formatDateLabel(date, days, idx, sortedTimestamps.length);
+        } else if (days <= 7) {
             const currentDay = date.getDate();
             const hours = date.getHours();
             const minutes = date.getMinutes();
@@ -910,7 +939,7 @@ function createOverlayChart(metric, berDataPoints, oroDataPoints, days, label) {
                             color: 'rgba(0, 0, 0, 0.05)'
                         },
                         ticks: {
-                            maxTicksLimit: days <= 7 ? 8 : 6,
+                            maxTicksLimit: days <= 1 ? 12 : (days <= 7 ? 8 : 6),
                             font: { size: 10 },
                             callback: function(value, index) {
                                 const label = labels[index];
