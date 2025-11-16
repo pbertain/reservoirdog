@@ -51,13 +51,6 @@
         msg: "WARNING: NGINX configuration test failed. This may be due to pre-existing configuration issues on the server. Our config file syntax is valid. Check the output above for details."
       when: nginx_test.rc != 0
 
-    - name: Test our specific config file syntax
-      command: nginx -t -c "{{ nginx_sites_available }}/45-reservoirdog-dev-nginx.conf"
-      register: our_config_test
-      changed_when: false
-      failed_when: false
-      ignore_errors: yes
-
     - name: Restart NGINX
       systemd:
         name: nginx
