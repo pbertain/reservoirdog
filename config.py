@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).parent
 DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR}/data/reservoir_data.db')
 
 # Data collection settings
-COLLECTION_INTERVAL_MINUTES = 60  # Collect data every hour
+COLLECTION_INTERVAL_MINUTES = 15  # Collect data every 15 minutes
 
 # Reservoir configurations
 RESERVOIRS = {
