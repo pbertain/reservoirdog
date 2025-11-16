@@ -134,26 +134,39 @@ function createChart(reservoirCode, metric, dataPoints, label) {
         return;
     }
     
-    // Prepare data
-    const labels = dataPoints.map(d => {
+    // Prepare data - keep labels and data aligned
+    const chartData = [];
+    const chartLabels = [];
+    
+    for (const d of dataPoints) {
+        let value = null;
+        if (metric === 'storage') {
+            value = d.storage !== null && d.storage !== undefined ? d.storage : null;
+        } else {
+            value = d.reservoir_elevation !== null && d.reservoir_elevation !== undefined ? d.reservoir_elevation : null;
+        }
+        
+        if (value === null) continue;
+        
         try {
             const date = new Date(d.timestamp);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            chartLabels.push(label);
+            chartData.push(value);
         } catch (e) {
-            return '';
+            console.warn(`Failed to parse timestamp: ${d.timestamp}`, e);
+            continue;
         }
-    }).filter(l => l);
+    }
     
-    const data = dataPoints.map(d => {
-        if (metric === 'storage') {
-            return d.storage !== null && d.storage !== undefined ? d.storage : null;
-        } else {
-            return d.reservoir_elevation !== null && d.reservoir_elevation !== undefined ? d.reservoir_elevation : null;
-        }
-    }).filter(v => v !== null);
-    
-    if (data.length === 0) {
+    if (chartData.length === 0 || chartLabels.length === 0) {
         console.warn(`No valid data for ${reservoirCode} ${metric}`);
+        showChartPlaceholder(reservoirCode, metric);
+        return;
+    }
+    
+    if (chartData.length !== chartLabels.length) {
+        console.error(`Data/label mismatch for ${reservoirCode} ${metric}: ${chartData.length} data points vs ${chartLabels.length} labels`);
         showChartPlaceholder(reservoirCode, metric);
         return;
     }
@@ -163,10 +176,10 @@ function createChart(reservoirCode, metric, dataPoints, label) {
         new Chart(canvas, {
         type: 'line',
         data: {
-            labels: labels,
+            labels: chartLabels,
             datasets: [{
                 label: label,
-                data: data,
+                data: chartData,
                 borderColor: metric === 'storage' ? '#4A90E2' : '#5FB3B3',
                 backgroundColor: metric === 'storage' ? 'rgba(74, 144, 226, 0.1)' : 'rgba(95, 179, 179, 0.1)',
                 borderWidth: 2,
@@ -279,25 +292,39 @@ function setupChartModals() {
                         return;
                     }
                     
-                    const labels = dataPoints.map(d => {
+                    // Prepare data - keep labels and data aligned
+                    const modalChartData = [];
+                    const modalChartLabels = [];
+                    
+                    for (const d of dataPoints) {
+                        let value = null;
+                        if (chartType === 'storage') {
+                            value = d.storage !== null && d.storage !== undefined ? d.storage : null;
+                        } else {
+                            value = d.reservoir_elevation !== null && d.reservoir_elevation !== undefined ? d.reservoir_elevation : null;
+                        }
+                        
+                        if (value === null) continue;
+                        
                         try {
                             const date = new Date(d.timestamp);
-                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            modalChartLabels.push(label);
+                            modalChartData.push(value);
                         } catch (e) {
-                            return '';
+                            console.warn(`Failed to parse timestamp: ${d.timestamp}`, e);
+                            continue;
                         }
-                    }).filter(l => l);
+                    }
                     
-                    const chartData = dataPoints.map(d => {
-                        if (chartType === 'storage') {
-                            return d.storage !== null && d.storage !== undefined ? d.storage : null;
-                        } else {
-                            return d.reservoir_elevation !== null && d.reservoir_elevation !== undefined ? d.reservoir_elevation : null;
-                        }
-                    }).filter(v => v !== null);
-                    
-                    if (chartData.length === 0) {
+                    if (modalChartData.length === 0 || modalChartLabels.length === 0) {
                         modalBody.innerHTML = '<p style="padding: 2rem; text-align: center; color: #5A6C7D;">No valid data available for this chart.</p>';
+                        return;
+                    }
+                    
+                    if (modalChartData.length !== modalChartLabels.length) {
+                        console.error(`Data/label mismatch: ${modalChartData.length} data points vs ${modalChartLabels.length} labels`);
+                        modalBody.innerHTML = '<p style="padding: 2rem; text-align: center; color: #5A6C7D;">Data format error. Please check console.</p>';
                         return;
                     }
                     
@@ -309,10 +336,10 @@ function setupChartModals() {
                         new Chart(modalCanvas, {
                         type: 'line',
                         data: {
-                            labels: labels,
+                            labels: modalChartLabels,
                             datasets: [{
                                 label: chartLabel,
-                                data: chartData,
+                                data: modalChartData,
                                 borderColor: borderColor,
                                 backgroundColor: bgColor,
                                 borderWidth: 2,
