@@ -510,30 +510,65 @@ function setupChartModals() {
                             maintainAspectRatio: false,
                             plugins: {
                                 legend: {
-                                    display: true,
-                                    position: 'top'
+                                    display: false
                                 },
                                 tooltip: {
                                     mode: 'index',
-                                    intersect: false
+                                    intersect: false,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    padding: 10,
+                                    titleFont: { size: 12 },
+                                    bodyFont: { size: 11 },
+                                    callbacks: {
+                                        title: function(context) {
+                                            const dataIndex = context[0].dataIndex;
+                                            const dataPoint = modalChartData[dataIndex];
+                                            if (dataPoint && typeof dataPoint === 'object' && dataPoint.x) {
+                                                const date = new Date(dataPoint.x);
+                                                return date.toLocaleString('en-US', { 
+                                                    weekday: 'short',
+                                                    month: 'short', 
+                                                    day: 'numeric',
+                                                    year: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                });
+                                            }
+                                            return context[0].label || '';
+                                        }
+                                    }
                                 }
                             },
                             scales: {
                                 x: {
                                     display: true,
                                     grid: {
-                                        display: false
+                                        display: true,
+                                        color: 'rgba(0, 0, 0, 0.05)'
+                                    },
+                                    ticks: {
+                                        maxTicksLimit: 12,
+                                        font: { size: 11 },
+                                        callback: function(value, index) {
+                                            // Only show non-empty labels (every 2 hours)
+                                            const label = modalChartLabels[index];
+                                            return label || '';
+                                        }
                                     }
                                 },
                                 y: {
                                     display: true,
+                                    min: modalYMin,
+                                    max: modalYMax,
                                     grid: {
                                         color: 'rgba(0, 0, 0, 0.05)'
                                     },
                                     ticks: {
+                                        font: { size: 11 },
+                                        stepSize: modalStepSize,
                                         callback: function(value) {
                                             if (chartType === 'storage') {
-                                                return (value / 1000000).toFixed(1) + 'M';
+                                                return (value / 1000000).toFixed(1);
                                             }
                                             return value.toFixed(0);
                                         }
