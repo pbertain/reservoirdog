@@ -141,6 +141,12 @@ body {
     margin-bottom: 0.25rem;
 }
 
+.stat-value.stat-timestamp {
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
 .stat-unit {
     font-size: 0.75rem;
     color: var(--text-secondary);
