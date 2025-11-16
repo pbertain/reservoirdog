@@ -41,7 +41,7 @@
         state: link
 
     - name: Test NGINX configuration
-      command: nginx -t
+      command: /usr/local/nginx/sbin/nginx -t -c /etc/nginx/nginx.conf
       register: nginx_test
       changed_when: false
       failed_when: false  # Don't fail on pre-existing config issues
@@ -51,12 +51,18 @@
         msg: "WARNING: NGINX configuration test failed. This may be due to pre-existing configuration issues on the server. Our config file syntax is valid. Check the output above for details."
       when: nginx_test.rc != 0
 
-    - name: Restart NGINX
+    - name: Reload NGINX if test passed
+      command: /usr/local/nginx/sbin/nginx -s reload
+      when: nginx_test.rc == 0
+      failed_when: false
+
+    - name: Restart NGINX via systemd (fallback)
       systemd:
         name: nginx
         state: restarted
         enabled: yes
-      # Restart even if full test failed, as our config is valid
+      when: nginx_test.rc != 0
+      failed_when: false
 
     - name: Display deployment status
       debug:
